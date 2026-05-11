@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { message, history = [] } = req.body || {};
+  const { message, history = [], images = [] } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message required' });
 
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const response = await fetch('https://middleton.p-e.kr/finbot/api/interview-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history })
+      body: JSON.stringify({ message, history, images })
     });
     const data = await response.json();
     return res.status(200).json(sanitizeResponse(data));

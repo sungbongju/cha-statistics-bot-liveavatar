@@ -294,6 +294,25 @@ export default function App() {
     setCameraStream(null)
   }, [])
 
+  // 카메라 프레임 1장 캡처 → JPEG data URL (없으면 null)
+  // 640x480 / quality 0.7 → 약 30KB. 매 사용자 발화 시점에 1장 캡처 후 백엔드 vision LLM에 첨부.
+  const captureCameraFrame = useCallback(() => {
+    const video = userVideoRef.current
+    if (!video || !cameraStreamRef.current) return null
+    if (!video.videoWidth || !video.videoHeight) return null
+    try {
+      const W = 640, H = 480
+      const canvas = document.createElement('canvas')
+      canvas.width = W
+      canvas.height = H
+      canvas.getContext('2d').drawImage(video, 0, 0, W, H)
+      return canvas.toDataURL('image/jpeg', 0.7)
+    } catch (e) {
+      console.warn('[captureCameraFrame] failed:', e)
+      return null
+    }
+  }, [])
+
   const startUserCamera = useCallback(async () => {
     if (cameraStreamRef.current) return true
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -361,10 +380,12 @@ export default function App() {
     setMessages(prev => [...prev, { role: 'assistant', text: null }]) // typing
 
     try {
+      const frame = captureCameraFrame()
+      const images = frame ? [frame] : []
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: historyRef.current.slice(-8) })
+        body: JSON.stringify({ message: text, history: historyRef.current.slice(-8), images })
       })
       const data = await res.json()
       const reply    = data.reply    || '죄송해요, 답변을 생성하지 못했어요.'
