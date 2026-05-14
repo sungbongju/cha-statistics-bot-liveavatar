@@ -33,6 +33,68 @@ async function readRawBody(req) {
   return Buffer.concat(chunks)
 }
 
+// 무음/노이즈에서 whisper가 통째로 뱉는 정형 hallucination
+const FULL_HALLUCINATIONS = [
+  '시청해주셔서 감사합니다',
+  '시청해 주셔서 감사합니다',
+  '감사합니다',
+  'MBC 뉴스',
+  '구독과 좋아요',
+  '구독과 좋아요 부탁드립니다',
+  '한글자막 by',
+]
+
+// whisper 결과 후처리: hallucination / 반복 패턴 제거
+//
+// faster-whisper는 짧거나 무음·노이즈가 섞인 오디오에서 같은 토큰을
+// 반복 생성하는 경향이 있다 ("네, 네, 네, 네, ..." 같은 패턴).
+// 이런 결과는 사용자가 실제로 말한 것이 아니므로 빈 문자열로 버린다.
+function sanitizeWhisperText(text) {
+  if (!text) return ''
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+
+  // 1) 통째로 정형 hallucination
+  if (FULL_HALLUCINATIONS.includes(trimmed)) return ''
+
+  // 2) 쉼표/공백 기준 토큰 분해
+  const tokens = trimmed
+    .split(/[\s,.;!?·]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+
+  if (tokens.length === 0) return ''
+
+  // 3) 같은 토큰이 연속 3회 이상 반복 → 반복 hallucination
+  let maxRun = 1
+  let run = 1
+  for (let i = 1; i < tokens.length; i++) {
+    if (tokens[i] === tokens[i - 1]) {
+      run += 1
+      if (run > maxRun) maxRun = run
+    } else {
+      run = 1
+    }
+  }
+  if (maxRun >= 3) return ''
+
+  // 4) 토큰이 4개 이상인데 고유 토큰이 35% 미만 → 대부분 반복 → drop
+  if (tokens.length >= 4) {
+    const uniqueRatio = new Set(tokens).size / tokens.length
+    if (uniqueRatio < 0.35) return ''
+  }
+
+  // 5) 전체가 1글자 토큰("네", "음", "어")으로만 구성 + 2개 이상 → 추임새 반복
+  if (tokens.length >= 2 && tokens.every((t) => t.length === 1)) return ''
+
+  // 통과 — 단, 연속 중복 토큰은 1개로 dedupe (정상 발화에 섞인 미세 반복 정리)
+  const deduped = []
+  for (const t of tokens) {
+    if (deduped[deduped.length - 1] !== t) deduped.push(t)
+  }
+  return deduped.join(' ')
+}
+
 function extFromContentType(ct) {
   if (!ct) return 'webm'
   if (ct.includes('mp4') || ct.includes('m4a')) return 'mp4'
@@ -83,9 +145,7 @@ export default async function handler(req, res) {
     const data = await upstream.json().catch(() => ({}))
     let text = (data.text || '').trim()
 
-    // whisper가 무음에서 흔히 뱉는 hallucination 필터
-    const HALLUCINATIONS = ['시청해주셔서 감사합니다', '감사합니다', 'MBC 뉴스', '구독과 좋아요']
-    if (text && HALLUCINATIONS.some((h) => text === h)) text = ''
+    text = sanitizeWhisperText(text)
 
     return res.status(200).json({ text })
   } catch (e) {

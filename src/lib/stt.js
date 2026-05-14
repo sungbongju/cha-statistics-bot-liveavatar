@@ -12,9 +12,12 @@ const DEFAULTS = {
   sttEndpoint: '/api/stt',
   voiceThreshold: 0.018, // RMS 임계값 — 이 이상이면 "발화 중"
   silenceMs: 1100, // 이만큼 무음 지속되면 발화 종료로 판정
-  minSpeechMs: 350, // 이보다 짧은 발화는 노이즈로 무시
+  minSpeechMs: 500, // 이보다 짧은 발화는 노이즈로 무시 (whisper hallucination 방지)
   maxSpeechMs: 15000, // 이보다 길면 강제로 끊어 전송
-  minBlobBytes: 1500, // 이보다 작은 Blob은 전송 안 함
+  minBlobBytes: 2500, // 이보다 작은 Blob은 전송 안 함
+  // 발화 구간 평균 RMS가 (voiceThreshold * 이 배율) 미만이면 실제 음성으로 보지 않고 버림.
+  // 순간적인 노이즈 스파이크 하나로 녹음이 시작됐다가 거의 무음인 chunk → whisper hallucination 차단.
+  minAvgRmsRatio: 0.55,
 }
 
 function pickMimeType() {
@@ -62,6 +65,7 @@ export class MicRecorder {
     this.minSpeechMs = opts.minSpeechMs ?? DEFAULTS.minSpeechMs
     this.maxSpeechMs = opts.maxSpeechMs ?? DEFAULTS.maxSpeechMs
     this.minBlobBytes = opts.minBlobBytes ?? DEFAULTS.minBlobBytes
+    this.minAvgRmsRatio = opts.minAvgRmsRatio ?? DEFAULTS.minAvgRmsRatio
 
     this.stream = null
     this.audioCtx = null
@@ -76,6 +80,9 @@ export class MicRecorder {
     this.speechStartAt = 0
     this.lastVoiceAt = 0
     this._lastSpeechDur = 0
+    this._rmsSum = 0 // 발화 구간 RMS 누적 (평균 계산용)
+    this._rmsCount = 0
+    this._lastAvgRms = 0
     this.mimeType = ''
   }
 
@@ -134,15 +141,21 @@ export class MicRecorder {
         if (!this.speaking) {
           this.speaking = true
           this.speechStartAt = now
+          this._rmsSum = 0
+          this._rmsCount = 0
           this._startRecorder()
         }
       }
 
       if (this.speaking) {
+        // 발화 구간 RMS 누적 — _flush에서 평균 내어 무음/저음 chunk 판별
+        this._rmsSum += rms
+        this._rmsCount += 1
         const silenceFor = now - this.lastVoiceAt
         const speechDur = now - this.speechStartAt
         if (silenceFor > this.silenceMs || speechDur > this.maxSpeechMs) {
           this.speaking = false
+          this._lastAvgRms = this._rmsCount > 0 ? this._rmsSum / this._rmsCount : 0
           this._stopRecorder(speechDur)
         }
       }
@@ -183,6 +196,7 @@ export class MicRecorder {
 
   async _flush() {
     const dur = this._lastSpeechDur || 0
+    const avgRms = this._lastAvgRms || 0
     const type = this.mimeType || 'audio/webm'
     const blob = new Blob(this.chunks, { type })
     this.chunks = []
@@ -190,6 +204,12 @@ export class MicRecorder {
 
     // 너무 짧거나 작은 건 노이즈 — 버림
     if (dur < this.minSpeechMs || blob.size < this.minBlobBytes) return
+    // 발화 구간 평균 RMS가 너무 낮으면 = 노이즈 스파이크로 시작됐다가 사실상 무음
+    // → whisper hallucination("네 네 네...") 원천 차단
+    if (avgRms < this.voiceThreshold * this.minAvgRmsRatio) {
+      console.log('[STT] dropped low-energy chunk (avgRms=' + avgRms.toFixed(4) + ')')
+      return
+    }
 
     this.onStateChange('transcribing')
     try {
