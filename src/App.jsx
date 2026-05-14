@@ -5,43 +5,17 @@ import AuthModal from './components/AuthModal'
 import SurveyModal from './components/SurveyModal'
 import styles from './App.module.css'
 import { getUser, clearAuth, verifyToken, newSessionId, saveChat } from './lib/api'
+import { MicRecorder, isMicRecorderSupported } from './lib/stt'
 
 // LiveAvatar (HeyGen 후속, LiveKit 기반 WebRTC). avatar_id는 박대근 교수님 워크스페이스의 LiveAvatar UUID.
 const AVATAR_ID = '3554efce-af84-4701-981e-2cbd46e991af'
 const INTERACTIVITY_TYPE = 'CONVERSATIONAL'
 
-function isMobileSpeechBrowser() {
-  if (typeof navigator === 'undefined') return false
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
-}
-
-function getEchoGuardMs() {
-  return isMobileSpeechBrowser() ? 2400 : 1200
-}
-
-function getSilenceMs() {
-  return isMobileSpeechBrowser() ? 1600 : 2000
-}
+// 봇 발화 종료 후 마이크 재개까지의 지연 (스피커 잔향이 마이크로 다시 잡히는 echo 회피)
+const ECHO_RESUME_DELAY_MS = 700
 
 function normalizeTranscript(text) {
   return (text || '').replace(/\s+/g, ' ').trim()
-}
-
-function mergeTranscript(previous, next) {
-  const prev = normalizeTranscript(previous)
-  const incoming = normalizeTranscript(next)
-  if (!prev) return incoming
-  if (!incoming) return prev
-  if (prev.includes(incoming)) return prev
-  if (incoming.includes(prev)) return incoming
-
-  for (let len = Math.min(prev.length, incoming.length); len >= 2; len--) {
-    if (prev.slice(-len) === incoming.slice(0, len)) {
-      return normalizeTranscript(prev + incoming.slice(len))
-    }
-  }
-
-  return normalizeTranscript(`${prev} ${incoming}`)
 }
 
 function getUserDisplayName(user) {
@@ -186,7 +160,7 @@ async function keepAliveLiveAvatar(sessionId) {
 }
 
 export default function App() {
-  const [status, setStatus]             = useState('idle')   // idle | connecting | connected | speaking | listening
+  const [status, setStatus]             = useState('idle')   // idle | connecting | connected | speaking
   const [messages, setMessages]         = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [videoReady, setVideoReady]     = useState(false)
@@ -246,18 +220,16 @@ export default function App() {
     setUser(null)
   }
 
-  // STT
-  const recognitionRef    = useRef(null)
-  const silenceTimerRef   = useRef(null)
-  const accumulatedFinalRef = useRef('')
+  // ─── STT (middleton whisper 기반 MicRecorder) ────────────────────────
+  // 기존 Web Speech API(webkitSpeechRecognition)는 iOS Safari / 카카오 in-app
+  // 브라우저에서 불안정 → MediaRecorder + RMS VAD로 발화 구간을 잡아 우리 whisper
+  // 서버로 보내는 방식으로 교체. echo guard는 status 기반 pause/resume로 단순화.
+  const micRecorderRef    = useRef(null)
   const isSpeakingRef     = useRef(false)
   const isProcessingRef   = useRef(false)
   const autoListenRef     = useRef(false)
   const isListeningRef    = useRef(false)
-  const echoGuardUntilRef = useRef(0)
-  const restartTimerRef   = useRef(null)
-  const recognitionStartingRef = useRef(false)
-  const startListeningRef = useRef(null)
+  const echoResumeTimerRef = useRef(null)
   const lastSubmittedSpeechRef = useRef({ key: '', at: 0 })
 
   useEffect(() => { isProcessingRef.current = isProcessing }, [isProcessing])
@@ -272,19 +244,6 @@ export default function App() {
   useEffect(() => {
     if (userVideoRef.current) userVideoRef.current.srcObject = cameraStream || null
   }, [cameraStream])
-
-  const clearListeningRestart = useCallback(() => {
-    clearTimeout(restartTimerRef.current)
-    restartTimerRef.current = null
-  }, [])
-
-  const scheduleStartListening = useCallback((delay = 600) => {
-    clearListeningRestart()
-    restartTimerRef.current = setTimeout(() => {
-      restartTimerRef.current = null
-      startListeningRef.current?.()
-    }, delay)
-  }, [clearListeningRestart])
 
   const stopUserCamera = useCallback(() => {
     if (cameraStreamRef.current) {
@@ -335,34 +294,11 @@ export default function App() {
 
   useEffect(() => () => stopUserCamera(), [stopUserCamera])
 
-  // ─── LiveAvatar interrupt ────────────────────────
-  const interruptAvatar = useCallback(async () => {
-    echoGuardUntilRef.current = Date.now() + getEchoGuardMs() + 600
-    clearListeningRestart()
-    recognitionStartingRef.current = false
-    clearTimeout(silenceTimerRef.current)
-    silenceTimerRef.current = null
-    accumulatedFinalRef.current = ''
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort() } catch {}
-      try { recognitionRef.current.stop() } catch {}
-    }
-    isListeningRef.current = false
-    setIsListening(false)
-    if (sessionRef.current && roomRef.current) {
-      try {
-        sendAvatarCommand(roomRef.current, 'avatar.interrupt')
-      } catch (e) { console.error('interrupt error:', e) }
-    }
-    isSpeakingRef.current = false
-    setStatus('connected')
-  }, [clearListeningRestart])
-
   // ─── 메시지 전송 ───────────────────────────────────
   const sendMessage = useCallback(async (userText) => {
     const text = userText.trim()
     if (!text || isProcessingRef.current) return
-    // 봇 발화 중에 STT가 echo로 final 잡으면 여기서 방어 (echo 무한루프 차단 마지막 보루)
+    // 봇 발화 중에 STT echo가 새 질문으로 들어오면 여기서 방어 (무한루프 차단 마지막 보루)
     if (isSpeakingRef.current) {
       console.warn('[echo guard] sendMessage suppressed during avatar speaking:', text.slice(0, 30))
       return
@@ -417,178 +353,126 @@ export default function App() {
       isProcessingRef.current = false
       setIsProcessing(false)
     }
-  }, [])
+  }, [captureCameraFrame])
 
-  // ─── STT (Web Speech API) ────────────────────────
-  const stopListening = useCallback(() => {
-    clearListeningRestart()
-    recognitionStartingRef.current = false
-    clearTimeout(silenceTimerRef.current)
-    silenceTimerRef.current = null
-    accumulatedFinalRef.current = ''
-    setIsListening(false)
-    isListeningRef.current = false
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch {}
-    }
-  }, [clearListeningRestart])
-
-  const startListening = useCallback(() => {
-    clearListeningRestart()
-    if (silenceTimerRef.current || accumulatedFinalRef.current.trim()) return
-    if (!recognitionRef.current || isListeningRef.current || recognitionStartingRef.current || isProcessingRef.current) return
-    if (!sessionRef.current) return
-    const wait = Math.max(0, echoGuardUntilRef.current - Date.now() + 100)
-    if (isSpeakingRef.current || wait > 0) {
-      if (autoListenRef.current) scheduleStartListening(Math.max(400, wait))
-      return
-    }
-    recognitionStartingRef.current = true
-    try {
-      recognitionRef.current.start()
-    } catch (e) {
-      recognitionStartingRef.current = false
-      const retryable = e?.name === 'InvalidStateError' || /already|started|busy/i.test(e?.message || '')
-      if (autoListenRef.current && retryable) {
-        scheduleStartListening(350)
-      } else {
-        console.warn('speech recognition start failed:', e)
-      }
-    }
-  }, [clearListeningRestart, scheduleStartListening])
-
-  useEffect(() => {
-    startListeningRef.current = startListening
-  }, [startListening])
-
+  // ─── STT 텍스트 제출 (whisper 결과 → sendMessage) ────────────────────
   const submitSpeechText = useCallback((rawText) => {
     const text = normalizeTranscript(rawText)
-    if (!text) return
-
+    if (!text || text.length < 2) return
+    // 봇 발화 중 / LLM 처리 중에 들어온 결과는 echo 가능성 → 무시
+    if (isSpeakingRef.current || isProcessingRef.current) {
+      console.warn('[echo guard] transcript dropped (speaking/processing):', text.slice(0, 30))
+      return
+    }
+    // 동일 발화 8초 내 중복 제출 방지 (whisper가 같은 구간 두 번 인식하는 경우)
     const key = text.replace(/\s+/g, '')
     const now = Date.now()
     const last = lastSubmittedSpeechRef.current
-
-    stopListening()
     if (key === last.key && now - last.at < 8000) return
     lastSubmittedSpeechRef.current = { key, at: now }
     sendMessage(text)
-  }, [sendMessage, stopListening])
+  }, [sendMessage])
 
-  const initRecognition = useCallback(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) {
-      alert('이 브라우저는 음성 인식을 지원하지 않아요. Chrome/Edge에서 사용해주세요.')
-      return false
+  // ─── MicRecorder 생성 (lazy) ─────────────────────────
+  const ensureMicRecorder = useCallback(() => {
+    if (micRecorderRef.current) return micRecorderRef.current
+    if (!isMicRecorderSupported()) {
+      alert('이 브라우저는 음성 인식을 지원하지 않아요.\n텍스트 모드를 이용하시거나 최신 Chrome/Safari에서 시도해주세요.')
+      return null
     }
+    const rec = new MicRecorder({
+      sttEndpoint: '/api/stt',
+      onTranscript: (text) => submitSpeechText(text),
+      onError: (err) => console.warn('[STT] MicRecorder error:', err),
+      onStateChange: (st) => {
+        const listening = st === 'listening' || st === 'recording'
+        isListeningRef.current = listening
+        setIsListening(listening)
+      },
+    })
+    micRecorderRef.current = rec
+    return rec
+  }, [submitSpeechText])
 
-    const rec = new SR()
-    const mobileSpeech = isMobileSpeechBrowser()
-    rec.lang            = 'ko-KR'
-    rec.interimResults  = !mobileSpeech
-    rec.continuous      = !mobileSpeech
-    rec.maxAlternatives = 1
-
-    rec.onstart = () => {
-      recognitionStartingRef.current = false
-      isListeningRef.current = true
-      setIsListening(true)
+  // ─── 마이크 시작 / 정지 ──────────────────────────────
+  const startListening = useCallback(async () => {
+    const rec = ensureMicRecorder()
+    if (!rec) {
+      autoListenRef.current = false
+      setAutoListen(false)
+      return
     }
-
-    rec.onresult = async (event) => {
-      clearTimeout(silenceTimerRef.current)
-      silenceTimerRef.current = null
-      let interim = '', final = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript
-        if (event.results[i].isFinal) final = mergeTranscript(final, t)
-        else interim += t
+    try {
+      if (!rec.isRunning) {
+        await rec.start()
+      } else {
+        rec.resume()
       }
-
-      // ─── echo 가드: 봇 발화 중 또는 LLM 처리 중에는 STT 결과 완전 무시 ───
-      if (isSpeakingRef.current || isProcessingRef.current || Date.now() < echoGuardUntilRef.current) {
-        return
-      }
-
-      if (final.trim()) {
-        accumulatedFinalRef.current = mergeTranscript(accumulatedFinalRef.current, final)
-        silenceTimerRef.current = setTimeout(() => {
-          silenceTimerRef.current = null
-          const text = accumulatedFinalRef.current.trim()
-          accumulatedFinalRef.current = ''
-          submitSpeechText(text)
-        }, getSilenceMs())
-      } else if (interim) {
-        silenceTimerRef.current = setTimeout(() => {
-          silenceTimerRef.current = null
-          const text = mergeTranscript(accumulatedFinalRef.current, interim)
-          if (text && text.length > 1) {
-            accumulatedFinalRef.current = ''
-            submitSpeechText(text)
-          }
-        }, getSilenceMs())
-      }
-    }
-
-    rec.onerror = (event) => {
-      recognitionStartingRef.current = false
-      if (event.error === 'not-allowed') {
+    } catch (e) {
+      console.warn('[STT] start failed:', e)
+      const denied = e?.name === 'NotAllowedError' || /denied|permission|allowed/i.test(e?.message || '')
+      if (denied) {
         alert('마이크 권한이 필요해요.\n브라우저 주소창 왼쪽의 자물쇠 아이콘을 클릭하여 마이크를 허용해주세요.')
-        autoListenRef.current = false
-        setAutoListen(false)
-      } else if (event.error === 'no-speech') {
-        if (autoListenRef.current && sessionRef.current && !silenceTimerRef.current && !accumulatedFinalRef.current.trim() && !isProcessingRef.current && !isSpeakingRef.current && Date.now() >= echoGuardUntilRef.current) {
-          scheduleStartListening(500)
-        }
+      } else {
+        alert('마이크를 시작하지 못했어요. 다른 앱이 마이크를 쓰고 있지 않은지 확인해주세요.')
       }
-      isListeningRef.current = false
-      setIsListening(false)
+      autoListenRef.current = false
+      setAutoListen(false)
     }
+  }, [ensureMicRecorder])
 
-    rec.onend = () => {
-      recognitionStartingRef.current = false
-      isListeningRef.current = false
-      setIsListening(false)
-      // 자동 listening 모드면 재시작
-      if (autoListenRef.current && sessionRef.current && !silenceTimerRef.current && !accumulatedFinalRef.current.trim() && !isProcessingRef.current && !isSpeakingRef.current && Date.now() >= echoGuardUntilRef.current) {
-        scheduleStartListening(600)
-      }
+  const stopListening = useCallback(() => {
+    const rec = micRecorderRef.current
+    if (rec) {
+      try { rec.stop() } catch {}
+      micRecorderRef.current = null
     }
+    isListeningRef.current = false
+    setIsListening(false)
+  }, [])
 
-    recognitionRef.current = rec
-    return true
-  }, [scheduleStartListening, submitSpeechText])
+  // ─── LiveAvatar interrupt ────────────────────────
+  const interruptAvatar = useCallback(() => {
+    // 봇 발화만 멈춤. 마이크(MicRecorder)는 그대로 유지 — status가 'connected'로
+    // 바뀌면 아래 echo guard useEffect가 알아서 resume 한다.
+    if (sessionRef.current && roomRef.current) {
+      try {
+        sendAvatarCommand(roomRef.current, 'avatar.interrupt')
+      } catch (e) { console.error('interrupt error:', e) }
+    }
+    isSpeakingRef.current = false
+    setStatus('connected')
+  }, [])
 
-  // 답변 끝나면 (isProcessing false + autoListen 켜져있으면) 자동 마이크 재시작
+  // ─── echo guard: 봇 발화 중 마이크 pause / 발화 끝나면 resume ──────────
+  // status === 'speaking' → MicRecorder.pause() (스트림 유지, VAD/녹음만 중단)
+  // status === 'connected' → ECHO_RESUME_DELAY_MS 후 resume (autoListen 켜져있을 때만)
   useEffect(() => {
-    if (!isProcessing && autoListen && sessionRef.current && !isListeningRef.current && !isSpeakingRef.current) {
-      if (silenceTimerRef.current || accumulatedFinalRef.current.trim()) return
-      scheduleStartListening(500)
-      return clearListeningRestart
-    }
-  }, [isProcessing, autoListen, scheduleStartListening, clearListeningRestart])
+    const rec = micRecorderRef.current
+    clearTimeout(echoResumeTimerRef.current)
+    if (!rec || !rec.isRunning) return
 
-  // ─── 봇 발화 중 마이크 stop (echo로 봇 음성이 새 질문이 되는 무한루프 방지) ───
-  // status === 'speaking' 들어오면 STT off, 'connected'로 빠지면 다시 on (autoListen 켜져있을 때만)
-  useEffect(() => {
     if (status === 'speaking') {
-      echoGuardUntilRef.current = Date.now() + getEchoGuardMs()
-      clearListeningRestart()
-      recognitionStartingRef.current = false
-      isListeningRef.current = false
-      setIsListening(false)
-      // 발화 시작 → 마이크 즉시 abort (stop은 마지막 결과 emit, abort는 즉시 종료)
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch {}
-        try { recognitionRef.current.stop() } catch {}
-      }
-    } else if (status === 'connected' && autoListenRef.current && !silenceTimerRef.current && !accumulatedFinalRef.current.trim() && !isListeningRef.current && !isProcessingRef.current) {
-      // 발화 종료 → 잠시 후 마이크 다시 on (트랙 잔향 회피 위해 1초 지연)
-      const delay = Math.max(1000, echoGuardUntilRef.current - Date.now() + 100)
-      scheduleStartListening(delay)
-      return clearListeningRestart
+      rec.pause()
+    } else if (status === 'connected' && autoListenRef.current) {
+      echoResumeTimerRef.current = setTimeout(() => {
+        const r = micRecorderRef.current
+        if (r && r.isRunning && autoListenRef.current && !isSpeakingRef.current && !isProcessingRef.current) {
+          r.resume()
+        }
+      }, ECHO_RESUME_DELAY_MS)
     }
-  }, [status, scheduleStartListening, clearListeningRestart])
+    return () => clearTimeout(echoResumeTimerRef.current)
+  }, [status])
+
+  // ─── LLM 처리 끝나면 마이크 resume (autoListen 켜져있을 때) ───────────
+  useEffect(() => {
+    const rec = micRecorderRef.current
+    if (!isProcessing && autoListen && rec && rec.isRunning && !isSpeakingRef.current) {
+      // 봇이 발화 중이 아니면 바로 resume. 발화 중이면 위 status useEffect가 처리.
+      rec.resume()
+    }
+  }, [isProcessing, autoListen])
 
   // ─── 마이크 토글 (사용자 액션) ─────────────────────
   const toggleMic = useCallback(() => {
@@ -597,10 +481,7 @@ export default function App() {
       alert('먼저 아바타를 시작해주세요.')
       return
     }
-    if (!recognitionRef.current) {
-      if (!initRecognition()) return
-    }
-    if (isListeningRef.current || autoListenRef.current) {
+    if (autoListenRef.current || isListeningRef.current) {
       autoListenRef.current = false
       setAutoListen(false)
       stopListening()
@@ -609,12 +490,9 @@ export default function App() {
       setAutoListen(true)
       startListening()
     }
-  }, [initRecognition, startListening, stopListening])
+  }, [startListening, stopListening])
 
-  // ─── ESC 키로 발화 인터럽트 (OAC 규성 SOFT-INTERRUPT 패턴 차용) ───
-  // - status === 'speaking' 일 때만 동작
-  // - window + document 양쪽 capture phase 등록 (브라우저 누락 방어)
-  // - textarea/input 포커스 중에도 동작 (blur 후 interrupt)
+  // ─── ESC 키로 발화 인터럽트 (OAC SOFT-INTERRUPT 패턴 차용) ───
   useEffect(() => {
     const handleGlobalKeydown = (e) => {
       if (e.key !== 'Escape' && e.code !== 'Escape') return
@@ -638,17 +516,11 @@ export default function App() {
   // ─── 아바타 종료 ───────────────────────────────────
   const stopAvatar = useCallback(async () => {
     // STT 중지
-    clearListeningRestart()
-    recognitionStartingRef.current = false
+    clearTimeout(echoResumeTimerRef.current)
     lastSubmittedSpeechRef.current = { key: '', at: 0 }
     autoListenRef.current = false
     setAutoListen(false)
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch {}
-      try { recognitionRef.current.abort?.() } catch {}
-      recognitionRef.current = null
-    }
-    accumulatedFinalRef.current = ''
+    stopListening()
     setIsListening(false)
     stopUserCamera()
     isSpeakingRef.current = false
@@ -696,20 +568,14 @@ export default function App() {
     }
     userTurnCountRef.current = 0
     modesUsedRef.current = new Set()
-  }, [clearListeningRestart, stopUserCamera])
+  }, [stopListening, stopUserCamera])
 
   const startTextMode = useCallback(() => {
-    clearListeningRestart()
-    recognitionStartingRef.current = false
+    clearTimeout(echoResumeTimerRef.current)
     lastSubmittedSpeechRef.current = { key: '', at: 0 }
     autoListenRef.current = false
     setAutoListen(false)
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch {}
-      try { recognitionRef.current.abort?.() } catch {}
-      recognitionRef.current = null
-    }
-    accumulatedFinalRef.current = ''
+    stopListening()
     setIsListening(false)
     stopUserCamera()
     isSpeakingRef.current = false
@@ -723,7 +589,7 @@ export default function App() {
     const greetingText = getGreetingText(user)
     setMessages([{ role: 'assistant', text: greetingText }])
     saveChat(sessionIdRef.current, 'assistant', greetingText)
-  }, [clearListeningRestart, stopUserCamera, user])
+  }, [stopListening, stopUserCamera, user])
 
   // ─── 아바타 시작 ───────────────────────────────────
   const attachAvatarTracks = useCallback(() => {
@@ -829,8 +695,6 @@ export default function App() {
         if (track.kind === 'audio') {
           avatarAudioTrackRef.current = track
           // v11/공식 SDK 패턴: 트랙마다 별도 audio element 생성 + body append.
-          // (TrackSubscribed가 'heygen'·'liveavatar-agent-...' 둘 다 옴 — 같은 audioRef에 attach
-          //  하면 두 번째가 첫 번째 덮어써서 발화 트랙이 재생 안 됨)
           const audioEl = track.attach()
           audioEl.autoplay = true
           audioEl.dataset.laTrack = participant?.identity || 'unknown'
@@ -855,14 +719,6 @@ export default function App() {
       await room.connect(sess.livekit_url, sess.livekit_client_token)
       console.log('[LA] room.connect OK, state:', room.state)
 
-      // 마이크 활성화 — LiveAvatar LITE 모드는 사용자 트랙으로 서버 STT 진행
-      try {
-        await room.localParticipant.setMicrophoneEnabled(true)
-        console.log('[LA] microphone enabled')
-      } catch (e) {
-        console.warn('[LA] setMicrophoneEnabled error:', e)
-      }
-
       // 세션 유지 — LiveAvatar 세션은 일정 시간 유휴 시 자동 종료되므로 주기적 keep-alive
       keepAliveIntervalRef.current = setInterval(() => {
         keepAliveLiveAvatar(sess.session_id)
@@ -886,13 +742,11 @@ export default function App() {
         } catch (e) { console.error('greeting speak error:', e) }
       }, 800)
 
-      // 마이크 자동 활성화 (사용자 클릭(시작 버튼) 컨텍스트 안이라 권한 prompt 가능)
-      if (initRecognition()) {
-        autoListenRef.current = true
-        setAutoListen(true)
-        // 인사말 끝날 때까지 기다리고 마이크 켜기 (대략 8초 잡아둠 — 인사말 끝 이벤트로 더 정밀해짐)
-        scheduleStartListening(8000)
-      }
+      // 마이크 자동 시작 (사용자 클릭(시작 버튼) 컨텍스트 안이라 권한 prompt 가능)
+      // MicRecorder는 인사말 발화 중엔 echo guard로 pause → 발화 끝나면 자동 resume
+      autoListenRef.current = true
+      setAutoListen(true)
+      startListening()
     } catch (e) {
       console.error(e)
       stopUserCamera()
@@ -906,7 +760,7 @@ export default function App() {
       setVideoReady(false)
       setStatus('idle')
     }
-  }, [initRecognition, scheduleStartListening, startUserCamera, stopUserCamera, user])
+  }, [startListening, startUserCamera, stopUserCamera, user])
 
   const startConversation = useCallback(() => {
     if (conversationModeRef.current === 'ttt') {
@@ -916,7 +770,7 @@ export default function App() {
     startAvatar()
   }, [startAvatar, startTextMode])
 
-  const changeConversationMode = useCallback(async (nextMode) => {
+  const changeConversationMode = useCallback((nextMode) => {
     if (nextMode === conversationModeRef.current) return
 
     const hasAvatarSession = Boolean(sessionRef.current)
@@ -944,12 +798,20 @@ export default function App() {
     }
 
     if (hasAvatarSession) {
-      if (!recognitionRef.current) initRecognition()
       autoListenRef.current = true
       setAutoListen(true)
-      scheduleStartListening(500)
+      startListening()
     }
-  }, [initRecognition, scheduleStartListening, startUserCamera, status, stopListening, stopUserCamera])
+  }, [startListening, startUserCamera, status, stopListening, stopUserCamera])
+
+  // 언마운트 시 마이크 정리
+  useEffect(() => () => {
+    clearTimeout(echoResumeTimerRef.current)
+    if (micRecorderRef.current) {
+      try { micRecorderRef.current.stop() } catch {}
+      micRecorderRef.current = null
+    }
+  }, [])
 
   const isChatConnected = status !== 'idle' && status !== 'connecting'
 
