@@ -329,7 +329,12 @@ export default function App() {
 
       setMessages(prev => {
         const next = [...prev]
-        next[next.length - 1] = { role: 'assistant', text: reply, contact: data.contact || null }
+        next[next.length - 1] = {
+          role: 'assistant',
+          text: reply,
+          formulas: Array.isArray(data.formulas) ? data.formulas : [],
+          contact: data.contact || null
+        }
         return next
       })
       historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }]

@@ -75,6 +75,25 @@ function ContactCard({ contact }) {
   )
 }
 
+function FormulaCard({ formulas }) {
+  if (!formulas || formulas.length === 0) return null
+  return (
+    <div className={styles.formulaCards}>
+      {formulas.map((f, i) => (
+        <div key={i} className={styles.formulaCard}>
+          {f.label && <span className={styles.formulaLabel}>{f.label}</span>}
+          <div className={styles.formulaMath}>
+            {(() => {
+              try { return <BlockMath math={f.latex} /> }
+              catch { return <code className={styles.formulaFallback}>{f.latex}</code> }
+            })()}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Message({ msg }) {
   const isUser = msg.role === 'user'
   return (
@@ -86,6 +105,9 @@ function Message({ msg }) {
         <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
           {msg.text === null ? <TypingDots /> : (isUser ? msg.text : <MathText text={msg.text} />)}
         </div>
+        {!isUser && msg.formulas && msg.formulas.length > 0 && (
+          <FormulaCard formulas={msg.formulas} />
+        )}
         {!isUser && msg.contact && <ContactCard contact={msg.contact} />}
       </div>
     </div>

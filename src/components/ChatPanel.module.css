@@ -293,6 +293,49 @@
   font-weight: 500;
 }
 
+/* 수식 카드 (FormulaCard) — 답변 버블 아래 별도 표시 */
+.formulaCards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulaCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.formulaLabel {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: -0.1px;
+}
+
+.formulaMath {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 2px;
+  font-size: 15px;
+}
+
+/* KaTeX 블록 수식 기본 마진 제거 */
+.formulaMath .katex-display {
+  margin: 0;
+}
+
+.formulaFallback {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
 /* 타이핑 도트 */
 .typingDots {
   display: flex;
@@ -447,6 +490,15 @@
 
   .msgBody {
     max-width: 88%;
+  }
+
+  .formulaCard {
+    padding: 8px 12px 6px;
+    border-radius: 10px;
+  }
+
+  .formulaMath {
+    font-size: 13px;
   }
 
   .contactCard {
