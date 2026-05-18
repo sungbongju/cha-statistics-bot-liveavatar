@@ -1,5 +1,38 @@
 import { useState, useRef, useEffect } from 'react'
+import { InlineMath, BlockMath } from 'react-katex'
+import 'katex/dist/katex.min.css'
 import styles from './ChatPanel.module.css'
+
+// $$...$$ (block) 또는 $...$ (inline) 수식을 KaTeX 로 렌더,
+// 일반 텍스트는 그대로. 수식 파싱 실패하면 원본 문자열 fallback.
+function MathText({ text }) {
+  if (!text || typeof text !== 'string') return text
+  // 블록 수식 $$...$$ 먼저, 그 다음 인라인 $...$
+  // (?:^|[^\\]) 으로 \\$ escape 회피
+  const parts = []
+  let i = 0
+  const re = /(\$\$([\s\S]+?)\$\$)|(\$([^\$\n]+?)\$)/g
+  let m
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > i) parts.push({ t: 'text', v: text.slice(i, m.index) })
+    if (m[1]) parts.push({ t: 'block', v: m[2] })
+    else      parts.push({ t: 'inline', v: m[4] })
+    i = m.index + m[0].length
+  }
+  if (i < text.length) parts.push({ t: 'text', v: text.slice(i) })
+  return parts.map((p, idx) => {
+    if (p.t === 'text')  return <span key={idx}>{p.v}</span>
+    if (p.t === 'inline') {
+      try { return <InlineMath key={idx} math={p.v} /> }
+      catch { return <span key={idx}>${p.v}$</span> }
+    }
+    if (p.t === 'block') {
+      try { return <BlockMath key={idx} math={p.v} /> }
+      catch { return <span key={idx}>{`$$${p.v}$$`}</span> }
+    }
+    return null
+  })
+}
 
 function TypingDots() {
   return (
@@ -51,7 +84,7 @@ function Message({ msg }) {
       )}
       <div className={styles.msgBody}>
         <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
-          {msg.text === null ? <TypingDots /> : msg.text}
+          {msg.text === null ? <TypingDots /> : (isUser ? msg.text : <MathText text={msg.text} />)}
         </div>
         {!isUser && msg.contact && <ContactCard contact={msg.contact} />}
       </div>
