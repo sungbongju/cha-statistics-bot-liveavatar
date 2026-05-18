@@ -170,12 +170,12 @@ export default function SurveyModal({
     <div className={styles.overlay} role="dialog" aria-modal="true">
       <div className={styles.modal}>
         <header className={styles.header}>
-          <h2>전공소개봇 사용 경험 설문</h2>
+          <h2>경영통계 티칭봇 사용 경험 설문</h2>
           <button className={styles.skipBtn} onClick={onClose}>건너뛰기</button>
         </header>
 
         <p className={styles.intro}>
-          본 설문은 방금 사용하신 차의과학대학교 신입생 전공상담 AI 면담봇에 대한 익명 연구 설문입니다.
+          본 설문은 방금 사용하신 차의과학대학교 경영학전공 경영통계 AI 티칭봇에 대한 익명 연구 설문입니다.
           개인을 식별할 수 있는 정보는 수집하지 않습니다. 약 4~5분 소요됩니다.
         </p>
 

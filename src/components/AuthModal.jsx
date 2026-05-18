@@ -72,9 +72,9 @@ export default function AuthModal({ open, onClose, onSuccess }) {
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.card} onClick={e => e.stopPropagation()}>
         <div className={styles.logo}>👨‍🏫</div>
-        <h3 className={styles.title}>신입생 전공상담 봇</h3>
+        <h3 className={styles.title}>경영통계 티칭봇</h3>
         <p className={styles.subtitle}>
-          차의과학대학교 신입생 전공상담<br/>전공·진로 상담을 시작해 보세요.
+          차의과학대학교 경영학전공 경영통계<br/>10챕터 학습을 시작해 보세요.
         </p>
 
         {/* 동의 섹션 — 항상 노출 */}

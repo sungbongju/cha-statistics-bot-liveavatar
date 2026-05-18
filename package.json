@@ -1,7 +1,7 @@
 {
-  "name": "cha-interview-bot",
+  "name": "cha-statistics-bot-liveavatar",
   "version": "1.0.0",
-  "description": "차의과학대 신입생 전공상담 면담봇",
+  "description": "차의과학대 경영학전공 경영통계 티칭봇 (LiveAvatar) — RAG + 챕터 진도 + scipy.stats tool-call + reply/ttsReply 수식분리",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

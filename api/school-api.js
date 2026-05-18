@@ -1,4 +1,4 @@
-const SCHOOL_API_BASE = 'https://aiforalab.com/liveavatar-api/api.php'
+const SCHOOL_API_BASE = 'https://aiforalab.com/statistics-api/api.php'
 const ALLOWED_ACTIONS = new Set([
   'email_signup',
   'email_login',

@@ -74,16 +74,16 @@ export default function AvatarPanel({
                 <div className={styles.avatarIcon}>
                   <span>AI</span>
                 </div>
-                <p className={styles.placeholderText}>AI 면담 어시스턴트</p>
-                <p className={styles.placeholderSub}>차의과학대학교 신입생 전공상담</p>
+                <p className={styles.placeholderText}>AI 티칭 어시스턴트</p>
+                <p className={styles.placeholderSub}>차의과학대학교 경영통계</p>
               </div>
             )}
 
             {videoReady && (
               <div className={styles.nameplate}>
                 <div className={styles.nameplateInner}>
-                  <span className={styles.nameplateName}>AI 면담 어시스턴트</span>
-                  <span className={styles.nameplateSub}>차의과학대학교 신입생 전공상담</span>
+                  <span className={styles.nameplateName}>AI 티칭 어시스턴트</span>
+                  <span className={styles.nameplateSub}>차의과학대학교 경영통계</span>
                 </div>
               </div>
             )}
