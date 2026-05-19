@@ -221,6 +221,67 @@
   margin-left: 8px;
 }
 
+/* ── Likert 5점 척도 (v2_edu) ── */
+.likertRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.likertBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.likertBtn:hover {
+  border-color: var(--gold, #b88a5e);
+  background: rgba(184, 138, 94, 0.04);
+}
+
+.likertActive {
+  border-color: var(--gold, #b88a5e);
+  background: rgba(184, 138, 94, 0.12);
+  box-shadow: 0 0 0 2px rgba(184, 138, 94, 0.2);
+}
+
+.likertNum {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text, #111827);
+}
+
+.likertActive .likertNum {
+  color: var(--gold, #b88a5e);
+}
+
+.likertLabel {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+@media (max-width: 600px) {
+  .likertLabel {
+    font-size: 0.6rem;
+  }
+  .likertBtn {
+    padding: 8px 4px;
+  }
+}
+
 /* 자유응답 */
 .freeRow {
   margin-bottom: 16px;

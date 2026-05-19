@@ -4,7 +4,7 @@ import ChatPanel from './components/ChatPanel'
 import ChapterNav from './components/ChapterNav'
 import QuizPanel from './components/QuizPanel'
 import AuthModal from './components/AuthModal'
-import SurveyModal from './components/SurveyModal'
+import SurveyModalV2Edu from './components/SurveyModalV2Edu'
 import styles from './App.module.css'
 import { getUser, clearAuth, verifyToken, newSessionId, saveChat } from './lib/api'
 import { MicRecorder, isMicRecorderSupported } from './lib/stt'
@@ -1061,12 +1061,11 @@ export default function App() {
         onClose={() => setAuthOpen(false)}
         onSuccess={(u) => setUser(u)}
       />
-      <SurveyModal
+      <SurveyModalV2Edu
         open={surveyOpen}
         onClose={() => setSurveyOpen(false)}
         sessionId={surveySessionId}
         modesUsed={surveyModesUsed}
-        visitCount={user?.visit_count ?? 1}
       />
     </div>
   )

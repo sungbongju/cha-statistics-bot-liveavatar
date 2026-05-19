@@ -90,6 +90,9 @@ switch ($action) {
     case 'save_survey':
         handleSaveSurvey($pdo, $input);
         break;
+    case 'save_survey_v2_edu':
+        handleSaveSurveyV2Edu($pdo, $input);
+        break;
     case 'survey_summary':
         handleSurveySummary($pdo, $input);
         break;
@@ -406,6 +409,124 @@ function handleSaveSurvey($pdo, $input) {
     } catch (PDOException $e) {
         error_log('[save_survey] ' . $e->getMessage());
         echo json_encode(array('success' => false, 'error' => 'survey save failed'));
+    }
+}
+
+// ─── Save Survey v2_edu (퀴즈 연동형 멀티모달 AI 아바타 튜터 - 학습자 인식 14문항 Likert 5점) ───
+function handleSaveSurveyV2Edu($pdo, $input) {
+    $payload = getUserFromToken($pdo, $input);
+    $user_id = $payload ? $payload['user_id'] : null;
+
+    $session_id = isset($input['session_id']) ? trim($input['session_id']) : null;
+
+    // 인구통계
+    $allowed_grade  = array('1','2','3','4','etc');
+    $allowed_gender = array('female','male','no_answer');
+    $allowed_majors = array('none','세포유전자재생의학','바이오식의약학','시스템생명과학','스포츠의학','심리학','미술치료','디지털보건의료','경영학','미디어커뮤니케이션학','AI의료데이터학','소프트웨어융합');
+    $allowed_modes  = array('ftf','sts','ttt');
+
+    $grade  = isset($input['grade'])  && in_array($input['grade'], $allowed_grade)  ? $input['grade']  : null;
+    $gender = isset($input['gender']) && in_array($input['gender'], $allowed_gender) ? $input['gender'] : null;
+    $mbti   = isset($input['mbti'])   ? strtoupper(substr(trim($input['mbti']), 0, 4)) : null;
+    if ($mbti !== null && !preg_match('/^[EI][SN][TF][JP]$/', $mbti)) $mbti = null;
+    $major1 = isset($input['major1']) && in_array($input['major1'], $allowed_majors) ? $input['major1'] : null;
+    $major2 = isset($input['major2']) && in_array($input['major2'], $allowed_majors) ? $input['major2'] : null;
+
+    // 사전 통계 수준 (1-5)
+    $prior_stats_level = isset($input['prior_stats_level']) ? (int)$input['prior_stats_level'] : null;
+    if ($prior_stats_level !== null && ($prior_stats_level < 1 || $prior_stats_level > 5)) $prior_stats_level = null;
+
+    // Likert 5점 정규화: 1-5만 허용, 그 외는 null
+    $toLikert = function($v) {
+        if ($v === null || $v === '') return null;
+        $n = (int)$v;
+        return ($n >= 1 && $n <= 5) ? $n : null;
+    };
+
+    $q_keys = array(
+        'q_quiz_link','q_quiz_explain',
+        'q_mode_switch',
+        'q_teacher_presence','q_warm_atmosphere','q_consistent_explain',
+        'q_accuracy','q_limit_admit',
+        'q_flow','q_curiosity',
+        'q_understanding','q_confidence','q_will_reuse',
+        'q_overall'
+    );
+    $q_vals = array();
+    foreach ($q_keys as $k) {
+        $q_vals[$k] = $toLikert(isset($input[$k]) ? $input[$k] : null);
+    }
+
+    // 구인별 평균 계산 (NULL은 제외)
+    $avg = function($keys, $vals) {
+        $sum = 0; $cnt = 0;
+        foreach ($keys as $k) {
+            if ($vals[$k] !== null) { $sum += $vals[$k]; $cnt++; }
+        }
+        return $cnt > 0 ? round($sum / $cnt, 2) : null;
+    };
+    $construct_a = $avg(array('q_quiz_link','q_quiz_explain'), $q_vals);
+    $construct_b = $avg(array('q_mode_switch'), $q_vals);
+    $construct_c = $avg(array('q_teacher_presence','q_warm_atmosphere','q_consistent_explain'), $q_vals);
+    $construct_d = $avg(array('q_accuracy','q_limit_admit'), $q_vals);
+    $construct_e = $avg(array('q_flow','q_curiosity'), $q_vals);
+    $construct_f = $avg(array('q_understanding','q_confidence','q_will_reuse'), $q_vals);
+    // 종합 = 14문항 전체 평균
+    $overall_score = $avg($q_keys, $q_vals);
+
+    // 모드 사용 행동
+    $mode_primary      = isset($input['mode_primary'])      && in_array($input['mode_primary'],      $allowed_modes) ? $input['mode_primary']      : null;
+    $mode_most_helpful = isset($input['mode_most_helpful']) && in_array($input['mode_most_helpful'], $allowed_modes) ? $input['mode_most_helpful'] : null;
+    $mode_switched     = isset($input['mode_switched']) ? ((int)$input['mode_switched'] ? 1 : 0) : null;
+
+    // 자유응답
+    $free_helpful     = isset($input['free_helpful'])     ? mb_substr(trim($input['free_helpful']),     0, 2000) : null;
+    $free_improvement = isset($input['free_improvement']) ? mb_substr(trim($input['free_improvement']), 0, 2000) : null;
+
+    // 메타
+    $duration_seconds = isset($input['duration_seconds']) ? (int)$input['duration_seconds'] : null;
+    $flag_too_fast = ($duration_seconds !== null && $duration_seconds < 60) ? 1 : 0;
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? mb_substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
+
+    $cols = array_merge(
+        array('user_id','session_id','survey_version','grade','gender','mbti','major1','major2','prior_stats_level'),
+        $q_keys,
+        array('mode_primary','mode_most_helpful','mode_switched',
+              'free_helpful','free_improvement',
+              'construct_a_quiz','construct_b_multimodal','construct_c_presence',
+              'construct_d_accuracy','construct_e_flow','construct_f_learning','overall_score',
+              'user_agent','duration_seconds','flag_too_fast')
+    );
+    $placeholders = implode(',', array_fill(0, count($cols), '?'));
+    $params = array(
+        $user_id, $session_id, 'v2_edu', $grade, $gender, $mbti, $major1, $major2, $prior_stats_level
+    );
+    foreach ($q_keys as $k) $params[] = $q_vals[$k];
+    $params = array_merge($params, array(
+        $mode_primary, $mode_most_helpful, $mode_switched,
+        $free_helpful, $free_improvement,
+        $construct_a, $construct_b, $construct_c, $construct_d, $construct_e, $construct_f, $overall_score,
+        $user_agent, $duration_seconds, $flag_too_fast
+    ));
+
+    $sql = 'INSERT INTO survey_responses_v2_edu (' . implode(',', $cols) . ') VALUES (' . $placeholders . ')';
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        echo json_encode(array(
+            'success' => true,
+            'id' => $pdo->lastInsertId(),
+            'constructs' => array(
+                'A_quiz' => $construct_a, 'B_multimodal' => $construct_b,
+                'C_presence' => $construct_c, 'D_accuracy' => $construct_d,
+                'E_flow' => $construct_e, 'F_learning' => $construct_f,
+                'overall' => $overall_score
+            )
+        ));
+    } catch (PDOException $e) {
+        error_log('[save_survey_v2_edu] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'survey v2_edu save failed'));
     }
 }
 

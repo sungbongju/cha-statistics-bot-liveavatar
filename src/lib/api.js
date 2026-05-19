@@ -112,12 +112,27 @@ export function saveChat(session_id, role, message, rag_hits = null) {
   }).catch(() => {})
 }
 
-// 신뢰설계 컴포넌트 평가 설문 제출 (v1)
+// 신뢰설계 컴포넌트 평가 설문 제출 (v1) — V7 논문용, 그대로 유지
 // answers: { grade, gender, mbti, major1, major2, q06_..., ..., q24_overall_trust, free_positive, free_negative, duration_seconds }
 export async function saveSurvey(answers) {
   const token = getToken()
   const body = { ...answers, survey_version: 'v1' }
   if (token) body.token = token
   const r = await call('save_survey', body)
+  return r
+}
+
+// 학습자 인식 설문 v2_edu (퀴즈 연동형 멀티모달 AI 아바타 튜터)
+// answers: { grade, gender, mbti, major1, major2, prior_stats_level,
+//            q_quiz_link, q_quiz_explain, q_mode_switch, q_teacher_presence,
+//            q_warm_atmosphere, q_consistent_explain, q_accuracy, q_limit_admit,
+//            q_flow, q_curiosity, q_understanding, q_confidence, q_will_reuse, q_overall,
+//            mode_primary, mode_most_helpful, mode_switched,
+//            free_helpful, free_improvement, duration_seconds }
+export async function saveSurveyV2Edu(answers) {
+  const token = getToken()
+  const body = { ...answers, session_id: getSessionId() }
+  if (token) body.token = token
+  const r = await call('save_survey_v2_edu', body)
   return r
 }
