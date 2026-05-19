@@ -83,6 +83,17 @@ export default function AvatarPanel({
           </div>
         </div>
 
+        {/* 첫 접속 안내 배너 — connecting 상태일 때만 */}
+        {status === 'connecting' && (showAvatarVideo || showVoiceOnly) && (
+          <div className={styles.connectingBanner}>
+            <span className={styles.connectingBannerIcon}>⏳</span>
+            <div className={styles.connectingBannerText}>
+              <strong>AI 아바타를 깨우는 중이에요</strong>
+              <small>첫 접속은 약 30초, 이후엔 10~15초 소요됩니다</small>
+            </div>
+          </div>
+        )}
+
         {/* Stage — FTF: video, STS: mic circle, TTT: hidden */}
         {showAvatarVideo && (
           <div className={styles.compactStage}>

@@ -720,6 +720,50 @@
   background: rgba(220, 38, 38, 0.08);
 }
 
+/* ── 첫 접속 안내 배너 (connecting 상태) ── */
+.connectingBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(184, 138, 94, 0.08), rgba(184, 138, 94, 0.03));
+  border-bottom: 1px solid var(--border);
+  animation: slideDown 0.3s ease-out;
+}
+
+.connectingBannerIcon {
+  font-size: 22px;
+  animation: pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.connectingBannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
+}
+
+.connectingBannerText strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.connectingBannerText small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1);    }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
 /* ── FTF Stage: video area (finmarket .ftf-video-wrap style) ── */
 .compactStage {
   position: relative;
