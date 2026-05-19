@@ -188,9 +188,9 @@ export default function App() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'))
   }, [])
   const [cameraStream, setCameraStream] = useState(null)
-  // 퀴즈 모드 상태
-  const [appMode, setAppMode]           = useState('quiz')   // 'quiz' | 'chat'
+  // 퀴즈 상태
   const [currentChapter, setCurrentChapter] = useState(null)
+  const [mobileChatOpen, setMobileChatOpen] = useState(false)
   const [quizProgress, setQuizProgress] = useState(() => {
     try {
       const saved = localStorage.getItem('stats-quiz-progress')
@@ -846,25 +846,32 @@ export default function App() {
     })
   }, [])
 
-  const handleQuizHint = useCallback((question) => {
-    // 퀴즈에서 힌트 요청 → 챗봇 모드로 전환 + 힌트 메시지 전송
-    setAppMode('chat')
-    // 텍스트 모드로 시작하고 힌트 질문 전송
+  const handleAskAI = useCallback((question) => {
+    // "잘 모르겠어요" → 우측 챗봇에서 AI가 설명
+    // 모바일이면 챗 패널 열기
+    setMobileChatOpen(true)
+
+    // 세션이 없으면 텍스트 모드로 시작
     if (status === 'idle') {
       sessionRef.current = null
       sessionIdRef.current = newSessionId()
       historyRef.current = []
       setVideoReady(false)
       setStatus('connected')
-      setMessages([
-        { role: 'assistant', text: '무엇이 궁금하세요? 힌트를 드릴게요.' },
-        { role: 'user', text: `이 문제에 대해 힌트를 주세요: "${question.question}"` }
-      ])
-      // 봇에게 힌트 요청
-      setTimeout(() => {
-        sendMessage(`이 문제에 대해 힌트를 주세요: "${question.question}" (힌트: ${question.hint})`)
-      }, 100)
+      const greeting = '무엇이 궁금하세요? 설명해드릴게요.'
+      setMessages([{ role: 'assistant', text: greeting }])
+      saveChat(sessionIdRef.current, 'assistant', greeting)
     }
+
+    // AI에게 설명 요청
+    setTimeout(() => {
+      sendMessage(
+        `이 문제를 잘 모르겠어요. 쉽게 설명해주세요:\n\n` +
+        `문제: ${question.question}\n` +
+        `선택지: ${question.options.map((o, i) => `${i + 1}) ${o}`).join(', ')}\n\n` +
+        `(참고 힌트: ${question.hint})`
+      )
+    }, 200)
   }, [status, sendMessage])
 
   const handleNextChapter = useCallback(() => {
@@ -888,68 +895,85 @@ export default function App() {
 
   return (
     <div className={styles.app}>
-      {appMode === 'quiz' ? (
-        <>
-          <ChapterNav
-            chapters={quizChapters}
-            progress={quizProgress}
-            currentChapter={currentChapter}
-            onSelect={setCurrentChapter}
-            onModeSwitch={() => setAppMode('chat')}
-          />
-          <QuizPanel
-            chapter={currentChapterData}
-            progress={quizProgress[currentChapter] || {}}
-            onComplete={handleQuizComplete}
-            onHint={handleQuizHint}
-            onNextChapter={handleNextChapter}
-            hasNextChapter={hasNextChapter}
-          />
-        </>
-      ) : (
-        <>
-          <AvatarPanel
-            status={status}
-            mode={conversationMode}
-            onModeChange={changeConversationMode}
-            videoRef={videoRef}
-            audioRef={audioRef}
-            userVideoRef={userVideoRef}
-            videoReady={videoReady}
-            cameraActive={Boolean(cameraStream)}
-            onStart={startConversation}
-            onStop={stopAvatar}
-            onInterrupt={interruptAvatar}
-            isListening={isListening}
-          />
-          <ChatPanel
-            messages={messages}
-            isProcessing={isProcessing}
-            onSend={sendMessage}
-            connected={isChatConnected}
-            isListening={isListening}
-            onToggleMic={toggleMic}
-            micEnabled={conversationMode !== 'ttt' && isChatConnected}
-            micAvailable={conversationMode !== 'ttt'}
-            mode={conversationMode}
-            user={user}
-            onLoginClick={() => setAuthOpen(true)}
-            onLogout={handleLogout}
-            onOpenSurvey={() => {
-              const liveSid = sessionIdRef.current
-              const sid = liveSid || lastEndedSessionIdRef.current || null
-              const liveModes = Array.from(modesUsedRef.current)
-              const modes = liveModes.length ? liveModes : lastEndedModesRef.current
-              setSurveySessionId(sid)
-              setSurveyModesUsed(modes)
-              setSurveyOpen(true)
-            }}
-            theme={theme}
-            onToggleTheme={toggleTheme}
-            onQuizSwitch={() => setAppMode('quiz')}
-          />
-        </>
+      {/* ── 왼쪽: 퀴즈 ── */}
+      <div className={styles.quizSide}>
+        <ChapterNav
+          chapters={quizChapters}
+          progress={quizProgress}
+          currentChapter={currentChapter}
+          onSelect={setCurrentChapter}
+          onModeSwitch={() => setMobileChatOpen(true)}
+        />
+        <QuizPanel
+          chapter={currentChapterData}
+          progress={quizProgress[currentChapter] || {}}
+          onComplete={handleQuizComplete}
+          onAskAI={handleAskAI}
+          onNextChapter={handleNextChapter}
+          hasNextChapter={hasNextChapter}
+        />
+      </div>
+
+      {/* ── 오른쪽: 아바타 + 채팅 ── */}
+      <div className={`${styles.chatSide} ${mobileChatOpen ? styles.chatOpen : ''}`}>
+        {/* 모바일 닫기 버튼 */}
+        <button
+          className={styles.mobileChatClose}
+          onClick={() => setMobileChatOpen(false)}
+          aria-label="채팅 닫기"
+        >✕</button>
+
+        <AvatarPanel
+          compact
+          status={status}
+          mode={conversationMode}
+          onModeChange={changeConversationMode}
+          videoRef={videoRef}
+          audioRef={audioRef}
+          userVideoRef={userVideoRef}
+          videoReady={videoReady}
+          cameraActive={Boolean(cameraStream)}
+          onStart={startConversation}
+          onStop={stopAvatar}
+          onInterrupt={interruptAvatar}
+          isListening={isListening}
+        />
+        <ChatPanel
+          messages={messages}
+          isProcessing={isProcessing}
+          onSend={sendMessage}
+          connected={isChatConnected}
+          isListening={isListening}
+          onToggleMic={toggleMic}
+          micEnabled={conversationMode !== 'ttt' && isChatConnected}
+          micAvailable={conversationMode !== 'ttt'}
+          mode={conversationMode}
+          user={user}
+          onLoginClick={() => setAuthOpen(true)}
+          onLogout={handleLogout}
+          onOpenSurvey={() => {
+            const liveSid = sessionIdRef.current
+            const sid = liveSid || lastEndedSessionIdRef.current || null
+            const liveModes = Array.from(modesUsedRef.current)
+            const modes = liveModes.length ? liveModes : lastEndedModesRef.current
+            setSurveySessionId(sid)
+            setSurveyModesUsed(modes)
+            setSurveyOpen(true)
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      </div>
+
+      {/* 모바일 FAB — 챗 열기 */}
+      {!mobileChatOpen && (
+        <button
+          className={styles.mobileChatFab}
+          onClick={() => setMobileChatOpen(true)}
+          aria-label="AI 도우미 열기"
+        >💬</button>
       )}
+
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}

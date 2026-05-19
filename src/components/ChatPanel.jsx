@@ -129,8 +129,7 @@ export default function ChatPanel({
   onLogout,
   onOpenSurvey,
   theme = 'light',
-  onToggleTheme,
-  onQuizSwitch
+  onToggleTheme
 }) {
   const [input, setInput]       = useState('')
   const bottomRef               = useRef(null)
@@ -234,7 +233,7 @@ export default function ChatPanel({
           onChange={handleInput}
           onKeyDown={handleKey}
           placeholder={
-            !connected ? '먼저 왼쪽의 [상담 시작] 버튼을 눌러주세요'
+            !connected ? '위의 [▶ 시작] 버튼을 눌러 대화를 시작하세요'
             : mode === 'ttt' ? '텍스트로 질문을 입력하세요…'
             : isListening ? '듣고 있어요…'
             : '궁금한 점을 입력하세요…'
@@ -251,22 +250,11 @@ export default function ChatPanel({
         </button>
       </div>
 
-      {/* 하단: 힌트 + 퀴즈 복귀 버튼 */}
+      {/* 하단 힌트 */}
       <div className={styles.hint}>
-        <span>
-          {mode === 'ttt'
-            ? 'Enter로 전송 · Shift+Enter 줄바꿈'
-            : 'Enter로 전송 · Shift+Enter 줄바꿈 · ◉ 누르면 듣기 시작'}
-        </span>
-        {onQuizSwitch && (
-          <button
-            type="button"
-            className={styles.quizBackBtn}
-            onClick={onQuizSwitch}
-          >
-            📊 퀴즈로 돌아가기
-          </button>
-        )}
+        {mode === 'ttt'
+          ? 'Enter로 전송 · Shift+Enter 줄바꿈'
+          : 'Enter로 전송 · Shift+Enter 줄바꿈 · ◉ 누르면 듣기 시작'}
       </div>
     </div>
   )

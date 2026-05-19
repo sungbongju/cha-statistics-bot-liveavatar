@@ -289,22 +289,24 @@
   justify-content: flex-end;
 }
 
-.hintBtn {
+.askAiBtn {
   padding: 10px 20px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   background: transparent;
-  color: var(--muted);
+  color: var(--gold);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.hintBtn:hover {
-  border-color: rgba(184, 138, 94, 0.4);
-  color: var(--text);
+.askAiBtn:hover {
+  border-color: var(--gold);
+  background: rgba(184, 138, 94, 0.08);
+  transform: translateY(-1px);
 }
 
 .submitBtn {

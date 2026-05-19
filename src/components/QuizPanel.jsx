@@ -39,7 +39,7 @@ function OptionButton({ label, index, selected, correct, revealed, onClick }) {
   )
 }
 
-function QuizCard({ question, questionIndex, total, onAnswer, onHint }) {
+function QuizCard({ question, questionIndex, total, onAnswer, onAskAI }) {
   const [selected, setSelected] = useState(null)
   const [revealed, setRevealed] = useState(false)
   const [showExplanation, setShowExplanation] = useState(false)
@@ -108,11 +108,11 @@ function QuizCard({ question, questionIndex, total, onAnswer, onHint }) {
         {!revealed && (
           <>
             <button
-              className={styles.hintBtn}
-              onClick={() => onHint(question)}
-              title="AI 도우미에게 힌트를 요청합니다"
+              className={styles.askAiBtn}
+              onClick={() => onAskAI(question)}
+              title="AI 도우미에게 설명을 요청합니다"
             >
-              힌트
+              🤔 잘 모르겠어요
             </button>
             <button
               className={styles.submitBtn}
@@ -174,7 +174,7 @@ export default function QuizPanel({
   chapter,          // { id, title, description, questions: [] }
   progress,         // { completed, score, total }
   onComplete,       // (chapterId, score, total) => void
-  onHint,           // (question) => void  — 봇에 힌트 요청
+  onAskAI,          // (question) => void  — 봇에 설명 요청
   onNextChapter,    // () => void
   hasNextChapter,
 }) {
@@ -276,7 +276,7 @@ export default function QuizPanel({
           questionIndex={currentQ}
           total={questions.length}
           onAnswer={handleAnswer}
-          onHint={onHint}
+          onAskAI={onAskAI}
         />
 
         {/* 다음 문제 버튼 (정답 확인 후) */}
