@@ -15,11 +15,8 @@ export default function ChapterNav({
 }) {
   const getStatus = (ch) => {
     if (progress[ch.id]?.completed) return 'completed'
-    // 첫 챕터는 항상 열림, 나머지는 이전 챕터 완료 시 열림
-    if (ch.id === 1) return 'current'
-    const prev = progress[ch.id - 1]
-    if (prev?.completed) return 'current'
-    return 'locked'
+    // 모든 챕터 열림 (잠금 해제)
+    return 'current'
   }
 
   const completedCount = Object.values(progress).filter(p => p?.completed).length
