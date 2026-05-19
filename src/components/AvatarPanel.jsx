@@ -26,8 +26,20 @@ export default function AvatarPanel({
   onStart,
   onStop,
   onInterrupt,
-  compact = false
+  compact = false,
+  connectingStep = 'idle'
 }) {
+  // 실제 로딩 단계 기반 진행률 + 메시지 — 이벤트로 차오르고 elapsed로 보간(interpolation)
+  const STEP_MAP = {
+    idle:             { pct: 0,   label: '준비 중',                emoji: '⏳' },
+    camera:           { pct: 15,  label: '마이크·카메라 준비 중',    emoji: '🎤' },
+    token:            { pct: 50,  label: 'AI 아바타 깨우는 중',     emoji: '✨' },
+    room_connecting:  { pct: 75,  label: '영상 채널 연결 중',       emoji: '📡' },
+    room_connected:   { pct: 90,  label: '거의 다 됐어요',          emoji: '🎬' },
+    video_ready:      { pct: 100, label: '곧 시작합니다!',          emoji: '👋' },
+  }
+  const stepInfo = STEP_MAP[connectingStep] || STEP_MAP.idle
+
   // 첫 접속 경과 시간 (connecting 동안에만 카운트)
   const [elapsedSec, setElapsedSec] = useState(0)
   useEffect(() => {
@@ -40,8 +52,11 @@ export default function AvatarPanel({
     return () => clearInterval(id)
   }, [status])
 
-  // 진행률: 30초 기준, 최대 95%까지 (100% 되면 어색)
-  const progressPct = Math.min(Math.round((elapsedSec / 30) * 100), 95)
+  // 진행률: 단계 % + elapsed 기반 작은 보간 (단계 간 멈춤 느낌 방지)
+  // 다음 단계까지의 부드러운 이동을 위해 elapsed 비율로 +5% 까지 추가
+  const stepPct = stepInfo.pct
+  const interpolated = Math.min(stepPct + (elapsedSec % 10) * 0.5, Math.min(stepPct + 5, 95))
+  const progressPct = Math.round(interpolated)
 
   const mappedStatus = STATUS_MAP[status] || STATUS_MAP.idle
   const label = mode === 'ttt' && status === 'connected' ? '연결됨' : mappedStatus.label
@@ -103,9 +118,9 @@ export default function AvatarPanel({
         {status === 'connecting' && (showAvatarVideo || showVoiceOnly) && (
           <div className={styles.connectingBanner}>
             <div className={styles.connectingBannerTop}>
-              <span className={styles.connectingBannerIcon}>⏳</span>
+              <span className={styles.connectingBannerIcon}>{stepInfo.emoji}</span>
               <div className={styles.connectingBannerText}>
-                <strong>AI 튜터가 곧 인사드릴 거예요</strong>
+                <strong>{stepInfo.label}</strong>
                 <small>첫 접속은 약 30초, 이후엔 10~15초 소요됩니다</small>
               </div>
               <span className={styles.connectingCounter}>{elapsedSec}초<small>/ 약 30초</small></span>

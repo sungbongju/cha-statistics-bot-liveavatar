@@ -199,6 +199,8 @@ export default function App() {
   })
   // 첫 접속 시 자동으로 로그인 모달 — 저장된 토큰(=user)이 있으면 안 띄움
   const [authOpen, setAuthOpen]         = useState(() => !getUser())
+  // 아바타 로딩 단계 — 'idle' | 'camera' | 'token' | 'room_connecting' | 'room_connected' | 'video_ready'
+  const [connectingStep, setConnectingStep] = useState('idle')
   const [surveyOpen, setSurveyOpen]     = useState(false)
   const [surveySessionId, setSurveySessionId] = useState(null)
   const [surveyModesUsed, setSurveyModesUsed] = useState([])
@@ -646,6 +648,7 @@ export default function App() {
 
   const startAvatar = useCallback(async () => {
     setStatus('connecting')
+    setConnectingStep('camera')
     sessionIdRef.current = newSessionId()  // 새 세션 ID
     lastSubmittedSpeechRef.current = { key: '', at: 0 }
     if (conversationModeRef.current === 'ftf') {
@@ -655,6 +658,7 @@ export default function App() {
     }
     try {
       // LiveAvatar: token + start 통합 단일 엔드포인트
+      setConnectingStep('token')
       const sess = await fetch('/api/liveavatar-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -707,6 +711,7 @@ export default function App() {
           if (videoRef.current) {
             track.attach(videoRef.current)
             setVideoReady(true)
+            setConnectingStep('video_ready')
             console.log('[LA] video track attached')
           } else {
             console.warn('[LA] videoRef.current is null at TrackSubscribed')
@@ -736,8 +741,10 @@ export default function App() {
       })
 
       console.log('[LA] connecting to', sess.livekit_url, 'session:', sess.session_id)
+      setConnectingStep('room_connecting')
       await room.connect(sess.livekit_url, sess.livekit_client_token)
       console.log('[LA] room.connect OK, state:', room.state)
+      setConnectingStep('room_connected')
 
       // 세션 유지 — LiveAvatar 세션은 일정 시간 유휴 시 자동 종료되므로 주기적 keep-alive
       keepAliveIntervalRef.current = setInterval(() => {
@@ -1033,6 +1040,7 @@ export default function App() {
           onStop={stopAvatar}
           onInterrupt={interruptAvatar}
           isListening={isListening}
+          connectingStep={connectingStep}
         />
         <ChatPanel
           messages={messages}
