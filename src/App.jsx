@@ -914,7 +914,7 @@ export default function App() {
         />
       </div>
 
-      {/* ── 오른쪽: 아바타 + 채팅 ── */}
+      {/* ── 오른쪽: 유틸바 + 아바타 + 채팅 ── */}
       <div className={`${styles.chatSide} ${mobileChatOpen ? styles.chatOpen : ''}`}>
         {/* 모바일 닫기 버튼 */}
         <button
@@ -922,6 +922,40 @@ export default function App() {
           onClick={() => setMobileChatOpen(false)}
           aria-label="채팅 닫기"
         >✕</button>
+
+        {/* 최상단 유틸 바: 설문 · 로그인 · 테마 */}
+        <div className={styles.utilBar}>
+          <span className={styles.utilTitle}>AI 도우미</span>
+          <div className={styles.utilActions}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={styles.utilBtn}
+              title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
+            >{theme === 'dark' ? '☀️' : '🌙'}</button>
+            <button
+              type="button"
+              onClick={() => {
+                const liveSid = sessionIdRef.current
+                const sid = liveSid || lastEndedSessionIdRef.current || null
+                const liveModes = Array.from(modesUsedRef.current)
+                const modes = liveModes.length ? liveModes : lastEndedModesRef.current
+                setSurveySessionId(sid)
+                setSurveyModesUsed(modes)
+                setSurveyOpen(true)
+              }}
+              className={styles.utilBtn}
+            >설문</button>
+            {user ? (
+              <>
+                <span className={styles.utilUser}>{user?.name || '사용자'}님</span>
+                <button onClick={handleLogout} className={styles.utilBtn}>로그아웃</button>
+              </>
+            ) : (
+              <button onClick={() => setAuthOpen(true)} className={styles.utilBtn}>로그인</button>
+            )}
+          </div>
+        </div>
 
         <AvatarPanel
           compact
@@ -948,20 +982,6 @@ export default function App() {
           micEnabled={conversationMode !== 'ttt' && isChatConnected}
           micAvailable={conversationMode !== 'ttt'}
           mode={conversationMode}
-          user={user}
-          onLoginClick={() => setAuthOpen(true)}
-          onLogout={handleLogout}
-          onOpenSurvey={() => {
-            const liveSid = sessionIdRef.current
-            const sid = liveSid || lastEndedSessionIdRef.current || null
-            const liveModes = Array.from(modesUsedRef.current)
-            const modes = liveModes.length ? liveModes : lastEndedModesRef.current
-            setSurveySessionId(sid)
-            setSurveyModesUsed(modes)
-            setSurveyOpen(true)
-          }}
-          theme={theme}
-          onToggleTheme={toggleTheme}
         />
       </div>
 

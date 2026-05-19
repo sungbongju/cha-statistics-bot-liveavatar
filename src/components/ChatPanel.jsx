@@ -123,18 +123,11 @@ export default function ChatPanel({
   onToggleMic,
   micEnabled,
   micAvailable = true,
-  mode,
-  user,
-  onLoginClick,
-  onLogout,
-  onOpenSurvey,
-  theme = 'light',
-  onToggleTheme
+  mode
 }) {
   const [input, setInput]       = useState('')
   const bottomRef               = useRef(null)
   const textareaRef             = useRef(null)
-  const displayName             = user?.name || user?.nickname || '사용자'
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -165,44 +158,7 @@ export default function ChatPanel({
 
   return (
     <div className={styles.panel}>
-      {/* 헤더 */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <span className={styles.headerIcon}>💬</span>
-          <span className={styles.headerTitle}>면담 대화</span>
-        </div>
-        <div className={styles.userArea}>
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className={styles.themeBtn}
-            title={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
-            aria-label="테마 전환"
-          >{theme === 'dark' ? '☀️' : '🌙'}</button>
-          <button
-            type="button"
-            onClick={onOpenSurvey}
-            className={styles.surveyBtn}
-            title="이 봇에 대한 의견 남기기"
-          >설문</button>
-          {user ? (
-            <>
-              <span className={`${styles.headerSub} ${styles.userGreeting}`}>
-                {displayName}님
-              </span>
-              <button
-                onClick={onLogout}
-                className={styles.logoutBtn}
-              >로그아웃</button>
-            </>
-          ) : (
-            <button
-              onClick={onLoginClick}
-              className={styles.loginBtn}
-            >로그인</button>
-          )}
-        </div>
-      </div>
+      {/* 헤더 (간소화 — 설문/로그인은 상위 utilBar로 이동) */}
 
       {/* 메시지 목록 */}
       <div className={styles.messages}>

@@ -111,3 +111,64 @@
     background: rgba(184, 138, 94, 0.1);
   }
 }
+
+/* ── 최상단 유틸 바 (설문 · 로그인 · 테마) ── */
+.utilBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.utilTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.utilActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.utilBtn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.utilBtn:hover {
+  border-color: rgba(184, 138, 94, 0.4);
+  color: var(--text);
+  background: rgba(184, 138, 94, 0.06);
+}
+
+.utilUser {
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .utilBar {
+    padding: 8px 12px;
+    padding-left: 52px; /* 모바일 닫기 버튼 공간 확보 */
+  }
+}

@@ -620,29 +620,30 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   flex-shrink: 0;
-  padding: 10px 16px;
+  padding: 16px;
 }
 
 .compactRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .compactMedia {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .compactVideoWrap {
-  width: 56px;
-  height: 72px;
-  border-radius: 10px;
+  width: 120px;
+  height: 160px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--media-bg);
   position: relative;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .compactVideoWrap .video {
@@ -654,10 +655,22 @@
 .compactPlaceholder {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(160deg, var(--card-bg-from), var(--card-bg-to));
+}
+
+.compactPlaceholder span {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(184, 138, 94, 0.18);
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, var(--card-bg-from), var(--card-bg-to));
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--gold);
 }
@@ -665,16 +678,16 @@
 .compactGlow {
   position: absolute;
   inset: -1px;
-  border-radius: 10px;
+  border-radius: 14px;
   border: 2px solid rgba(59, 130, 246, 0.5);
   pointer-events: none;
   animation: pulseGlow 1.5s ease-in-out infinite;
 }
 
 .compactCameraWrap {
-  width: 56px;
-  height: 72px;
-  border-radius: 10px;
+  width: 120px;
+  height: 160px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: linear-gradient(160deg, var(--card-bg-from), var(--card-bg-to));
@@ -682,23 +695,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .compactCamOff {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
 }
 
 .compactIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
   background: rgba(184, 138, 94, 0.12);
   border: 1px solid var(--border);
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--gold);
   flex-shrink: 0;
@@ -720,16 +734,14 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
 }
 
 .compactTitle {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: -0.3px;
 }
 
 .compactStatusRow {
@@ -739,24 +751,23 @@
 }
 
 .compactLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 
 .compactToggles {
   display: flex;
-  gap: 4px;
-  flex-shrink: 0;
+  gap: 6px;
 }
 
 .compactToggle {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: transparent;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 17px;
   display: grid;
   place-items: center;
   transition: all 0.15s;
