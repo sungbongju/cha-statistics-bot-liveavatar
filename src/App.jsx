@@ -746,21 +746,68 @@ export default function App() {
 
       setStatus('connected')
 
-      // 인사말 — 채팅 표시 + 아바타 발화
-      const greetingText = getGreetingText(user)
-      const greetingTts = normalizeTtsText(getGreetingTts(user))
-
-      setMessages([{ role: 'assistant', text: greetingText }])
-      saveChat(sessionIdRef.current, 'assistant', greetingText)
-
-      // 인사말 발화 (트랙 attach 직후 첫 명령 누락 방지 위해 800ms 지연)
-      isSpeakingRef.current = true
-      setStatus('speaking')
-      setTimeout(() => {
+      // 인사말 — FTF는 vision(카메라) 기반, STS는 정적 텍스트
+      if (conversationModeRef.current === 'ftf') {
+        // Vision 인사: 카메라 프레임 캡처 → LLM에 전송 → 맞춤 인사
+        setMessages([{ role: 'assistant', text: null }])  // typing indicator
+        // 카메라 초기화 대기 (최소 1.2초)
+        await new Promise(r => setTimeout(r, 1200))
+        const frame = captureCameraFrame()
         try {
-          sendAvatarCommand(roomRef.current, 'avatar.speak_text', { text: greetingTts })
-        } catch (e) { console.error('greeting speak error:', e) }
-      }, 800)
+          const userName = getUserDisplayName(user)
+          const visitOrd = getKoreanVisitOrdinal(getVisitCount(user))
+          const greetingPrompt = user
+            ? `(${userName}님이 ${visitOrd} 방문으로 카메라를 켜고 대화를 시작했습니다. 카메라에 보이는 학생의 모습을 참고하여 따뜻하게 첫 인사를 해주세요.)`
+            : '(학생이 카메라를 켜고 대화를 시작했습니다. 카메라에 보이는 학생의 모습을 참고하여 따뜻하게 첫 인사를 해주세요.)'
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: greetingPrompt,
+              history: [],
+              images: frame ? [frame] : []
+            })
+          })
+          const data = await res.json()
+          const greetingText = data.reply || getGreetingText(user)
+          const greetingTts  = normalizeTtsText(data.ttsReply || greetingText)
+          setMessages([{ role: 'assistant', text: greetingText }])
+          historyRef.current = [{ role: 'assistant', content: greetingText }]
+          saveChat(sessionIdRef.current, 'assistant', greetingText)
+          isSpeakingRef.current = true
+          setStatus('speaking')
+          setTimeout(() => {
+            try { sendAvatarCommand(roomRef.current, 'avatar.speak_text', { text: greetingTts }) }
+            catch (e) { console.error('greeting speak error:', e) }
+          }, 800)
+        } catch (e) {
+          console.warn('[vision greeting] failed, falling back to static:', e)
+          const greetingText = getGreetingText(user)
+          const greetingTts  = normalizeTtsText(getGreetingTts(user))
+          setMessages([{ role: 'assistant', text: greetingText }])
+          historyRef.current = [{ role: 'assistant', content: greetingText }]
+          saveChat(sessionIdRef.current, 'assistant', greetingText)
+          isSpeakingRef.current = true
+          setStatus('speaking')
+          setTimeout(() => {
+            try { sendAvatarCommand(roomRef.current, 'avatar.speak_text', { text: greetingTts }) }
+            catch (e2) { console.error('greeting speak error:', e2) }
+          }, 800)
+        }
+      } else {
+        // STS 모드 — 정적 인사말
+        const greetingText = getGreetingText(user)
+        const greetingTts  = normalizeTtsText(getGreetingTts(user))
+        setMessages([{ role: 'assistant', text: greetingText }])
+        historyRef.current = [{ role: 'assistant', content: greetingText }]
+        saveChat(sessionIdRef.current, 'assistant', greetingText)
+        isSpeakingRef.current = true
+        setStatus('speaking')
+        setTimeout(() => {
+          try { sendAvatarCommand(roomRef.current, 'avatar.speak_text', { text: greetingTts }) }
+          catch (e) { console.error('greeting speak error:', e) }
+        }, 800)
+      }
 
       // 마이크 자동 시작 (사용자 클릭(시작 버튼) 컨텍스트 안이라 권한 prompt 가능)
       // MicRecorder는 인사말 발화 중엔 echo guard로 pause → 발화 끝나면 자동 resume
