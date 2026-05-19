@@ -723,12 +723,18 @@
 /* ── 첫 접속 안내 배너 (connecting 상태) ── */
 .connectingBanner {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px 16px;
   background: linear-gradient(90deg, rgba(184, 138, 94, 0.08), rgba(184, 138, 94, 0.03));
   border-bottom: 1px solid var(--border);
   animation: slideDown 0.3s ease-out;
+}
+
+.connectingBannerTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .connectingBannerIcon {
@@ -742,6 +748,8 @@
   flex-direction: column;
   gap: 2px;
   line-height: 1.4;
+  flex: 1;
+  min-width: 0;
 }
 
 .connectingBannerText strong {
@@ -753,6 +761,39 @@
 .connectingBannerText small {
   font-size: 11px;
   color: var(--muted);
+}
+
+.connectingCounter {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold, #b88a5e);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.connectingCounter small {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.connectingProgressTrack {
+  width: 100%;
+  height: 4px;
+  background: rgba(184, 138, 94, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.connectingProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold, #b88a5e), #d4a574);
+  border-radius: 2px;
+  transition: width 0.4s ease-out;
+  box-shadow: 0 0 8px rgba(184, 138, 94, 0.4);
 }
 
 @keyframes slideDown {

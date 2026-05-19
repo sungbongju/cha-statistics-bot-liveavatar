@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import styles from './AvatarPanel.module.css'
 
 const STATUS_MAP = {
@@ -27,6 +28,21 @@ export default function AvatarPanel({
   onInterrupt,
   compact = false
 }) {
+  // 첫 접속 경과 시간 (connecting 동안에만 카운트)
+  const [elapsedSec, setElapsedSec] = useState(0)
+  useEffect(() => {
+    if (status !== 'connecting') { setElapsedSec(0); return }
+    setElapsedSec(0)
+    const startedAt = Date.now()
+    const id = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000))
+    }, 250)
+    return () => clearInterval(id)
+  }, [status])
+
+  // 진행률: 30초 기준, 최대 95%까지 (100% 되면 어색)
+  const progressPct = Math.min(Math.round((elapsedSec / 30) * 100), 95)
+
   const mappedStatus = STATUS_MAP[status] || STATUS_MAP.idle
   const label = mode === 'ttt' && status === 'connected' ? '연결됨' : mappedStatus.label
   const dot = mappedStatus.dot
@@ -86,10 +102,16 @@ export default function AvatarPanel({
         {/* 첫 접속 안내 배너 — connecting 상태일 때만 */}
         {status === 'connecting' && (showAvatarVideo || showVoiceOnly) && (
           <div className={styles.connectingBanner}>
-            <span className={styles.connectingBannerIcon}>⏳</span>
-            <div className={styles.connectingBannerText}>
-              <strong>AI 아바타를 깨우는 중이에요</strong>
-              <small>첫 접속은 약 30초, 이후엔 10~15초 소요됩니다</small>
+            <div className={styles.connectingBannerTop}>
+              <span className={styles.connectingBannerIcon}>⏳</span>
+              <div className={styles.connectingBannerText}>
+                <strong>AI 튜터가 곧 인사드릴 거예요</strong>
+                <small>첫 접속은 약 30초, 이후엔 10~15초 소요됩니다</small>
+              </div>
+              <span className={styles.connectingCounter}>{elapsedSec}초<small>/ 약 30초</small></span>
+            </div>
+            <div className={styles.connectingProgressTrack}>
+              <div className={styles.connectingProgressFill} style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         )}
