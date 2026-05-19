@@ -43,84 +43,79 @@ export default function AvatarPanel({
   ].filter(Boolean).join(' ')
 
   if (compact) {
+    const modeLabel = showAvatarVideo ? '아바타 대화 (FTF)' : showVoiceOnly ? '음성 대화 (STS)' : 'AI 텍스트 상담'
     return (
       <div className={styles.compactPanel}>
         <audio ref={audioRef} autoPlay playsInline className={styles.hiddenMedia} />
-        {/* hidden video for STS/TTT modes */}
         {!showAvatarVideo && (
           <video ref={videoRef} autoPlay playsInline className={styles.hiddenMedia} />
         )}
 
-        <div className={styles.compactRow}>
-          {/* Small media preview */}
-          <div className={styles.compactMedia}>
-            {showAvatarVideo ? (
-              <div className={styles.compactVideoWrap}>
-                <video ref={videoRef} autoPlay playsInline className={styles.video}
-                  style={{ opacity: videoReady ? 1 : 0 }} />
-                {!videoReady && (
-                  <div className={styles.compactPlaceholder}><span>AI</span></div>
-                )}
-                {status === 'speaking' && <div className={styles.compactGlow} />}
-              </div>
-            ) : showVoiceOnly ? (
-              <div className={`${styles.compactIcon} ${status === 'speaking' ? styles.compactSpeaking : ''}`}>
-                🎙
-              </div>
-            ) : (
-              <div className={styles.compactIcon}>AI</div>
+        {/* Header bar — always visible (finmarket .chat-header style) */}
+        <div className={styles.compactHeader}>
+          <div className={styles.compactHeaderLeft}>
+            <span className={styles.compactHeaderTitle}>{modeLabel}</span>
+            <span className={`${styles.dot} ${styles[dot]}`} />
+            <span className={styles.compactHeaderStatus}>{label}</span>
+          </div>
+          <div className={styles.compactHeaderRight}>
+            {status === 'idle' && (
+              <button className={styles.compactStartBtn} onClick={onStart}>
+                {showTextOnly ? '💬 상담 시작' : '▶ 시작'}
+              </button>
             )}
-            {mode === 'ftf' && (
-              <div className={styles.compactCameraWrap}>
-                <video ref={userVideoRef} autoPlay muted playsInline
-                  className={styles.cameraVideo}
-                  style={{ opacity: cameraActive ? 1 : 0 }} />
-                {!cameraActive && <span className={styles.compactCamOff}>CAM</span>}
-              </div>
+            {status === 'connecting' && (
+              <button className={styles.compactStartBtn} disabled>
+                <span className={styles.spinner} /> 연결 중…
+              </button>
+            )}
+            {status === 'speaking' && (
+              <button className={styles.compactInterruptBtn} onClick={onInterrupt}>
+                ⏸ 멈추기
+              </button>
+            )}
+            {(status === 'connected' || status === 'speaking') && (
+              <button className={styles.compactStopBtn}
+                onClick={() => { if (window.confirm('대화를 종료할까요?')) onStop?.() }}>
+                ✕ 종료
+              </button>
             )}
           </div>
+        </div>
 
-          {/* Title + Status */}
-          <div className={styles.compactInfo}>
-            <span className={styles.compactTitle}>AI 티칭 어시스턴트</span>
-            <span className={styles.compactStatusRow}>
-              <span className={`${styles.dot} ${styles[dot]}`} />
-              <span className={styles.compactLabel}>{label}</span>
+        {/* Stage — FTF: video, STS: mic circle, TTT: hidden */}
+        {showAvatarVideo && (
+          <div className={styles.compactStage}>
+            <video ref={videoRef} autoPlay playsInline className={styles.compactVideo}
+              style={{ opacity: videoReady ? 1 : 0 }} />
+            {!videoReady && (
+              <div className={styles.compactPlaceholder}>
+                <div className={styles.compactAvatarBadge}>AI</div>
+                <p className={styles.compactPlaceholderTitle}>AI 티칭 어시스턴트</p>
+                <p className={styles.compactPlaceholderSub}>차의과학대학교 경영통계</p>
+              </div>
+            )}
+            {status === 'speaking' && <div className={styles.compactGlow} />}
+            {/* Camera PIP */}
+            <div className={styles.compactCameraPip}>
+              <video ref={userVideoRef} autoPlay muted playsInline
+                className={styles.cameraVideo}
+                style={{ opacity: cameraActive ? 1 : 0 }} />
+              {!cameraActive && <span className={styles.compactCamOff}>CAM</span>}
+            </div>
+          </div>
+        )}
+
+        {showVoiceOnly && (
+          <div className={styles.compactStsStage}>
+            <div className={`${styles.compactStsCircle} ${status === 'speaking' ? styles.compactSpeaking : ''}`}>
+              🎤
+            </div>
+            <span className={styles.compactStsLabel}>
+              {status === 'speaking' ? '말하는 중…' : status === 'connected' ? '듣고 있어요' : '대기 중'}
             </span>
           </div>
-
-          {/* Mode toggles */}
-          <div className={styles.compactToggles}>
-            <button type="button"
-              className={`${styles.compactToggle} ${cameraEnabled ? styles.compactToggleOn : ''}`}
-              onClick={() => onModeChange?.(cameraEnabled ? 'sts' : 'ftf')}
-              disabled={status === 'connecting'}
-              title="카메라">📷</button>
-            <button type="button"
-              className={`${styles.compactToggle} ${micEnabled ? styles.compactToggleOn : ''}`}
-              onClick={() => onModeChange?.(micEnabled ? 'ttt' : 'ftf')}
-              disabled={status === 'connecting'}
-              title="마이크">🎙</button>
-          </div>
-
-          {/* Action buttons */}
-          {status === 'idle' && (
-            <button className={styles.compactStartBtn} onClick={onStart}>▶ 시작</button>
-          )}
-          {status === 'connecting' && (
-            <button className={styles.compactStartBtn} disabled>
-              <span className={styles.spinner} />
-            </button>
-          )}
-          {status === 'speaking' && (
-            <button className={styles.compactInterruptBtn} onClick={onInterrupt} title="말 멈추기">⏸</button>
-          )}
-          {(status === 'connected' || status === 'speaking') && (
-            <button className={styles.compactStopBtn}
-              onClick={() => { if (window.confirm('대화를 종료할까요?')) onStop?.() }}
-              title="대화 종료">■</button>
-          )}
-        </div>
+        )}
       </div>
     )
   }

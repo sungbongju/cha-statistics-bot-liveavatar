@@ -112,33 +112,63 @@
   }
 }
 
-/* ── 최상단 유틸 바 (설문 · 로그인 · 테마) ── */
+/* ── 최상단 유틸 바 (모드탭 · 설문 · 로그인 · 테마) ── */
 .utilBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   flex-shrink: 0;
+  gap: 8px;
 }
 
-.utilTitle {
-  font-size: 14px;
-  font-weight: 700;
+/* ── 모드 탭 (finmarket 스타일 TTT/STS/FTF) ── */
+.modeTabs {
+  display: flex;
+  gap: 4px;
+}
+
+.modeTab {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.modeTab:hover {
   color: var(--text);
-  letter-spacing: -0.3px;
+  background: var(--overlay-soft);
+}
+
+.modeTabActive {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.modeTabActive:hover {
+  background: var(--text);
+  color: var(--bg);
 }
 
 .utilActions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .utilBtn {
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
@@ -160,7 +190,7 @@
   font-size: 11px;
   color: var(--text);
   font-weight: 500;
-  max-width: 80px;
+  max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -170,5 +200,9 @@
   .utilBar {
     padding: 8px 12px;
     padding-left: 52px; /* 모바일 닫기 버튼 공간 확보 */
+  }
+  .modeTab {
+    padding: 5px 8px;
+    font-size: 10px;
   }
 }

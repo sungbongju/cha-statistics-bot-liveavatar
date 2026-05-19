@@ -923,9 +923,23 @@ export default function App() {
           aria-label="채팅 닫기"
         >✕</button>
 
-        {/* 최상단 유틸 바: 설문 · 로그인 · 테마 */}
+        {/* 최상단 유틸 바: 모드탭 · 설문 · 로그인 · 테마 */}
         <div className={styles.utilBar}>
-          <span className={styles.utilTitle}>AI 도우미</span>
+          {/* 모드 탭 (finmarket 스타일) */}
+          <div className={styles.modeTabs}>
+            <button
+              className={`${styles.modeTab} ${conversationMode === 'ttt' ? styles.modeTabActive : ''}`}
+              onClick={() => changeConversationMode('ttt')}
+            >💬 텍스트</button>
+            <button
+              className={`${styles.modeTab} ${conversationMode === 'sts' ? styles.modeTabActive : ''}`}
+              onClick={() => changeConversationMode('sts')}
+            >🎙 음성</button>
+            <button
+              className={`${styles.modeTab} ${conversationMode === 'ftf' ? styles.modeTabActive : ''}`}
+              onClick={() => changeConversationMode('ftf')}
+            >👤 아바타</button>
+          </div>
           <div className={styles.utilActions}>
             <button
               type="button"

@@ -614,42 +614,126 @@
   border-color: rgba(220, 38, 38, 0.7);
 }
 
-/* ═══ Compact mode (quiz layout right column) ═══ */
+/* ═══ Compact mode — finmarket-style: header bar + conditional stage ═══ */
 .compactPanel {
   width: 100%;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
   flex-shrink: 0;
-  padding: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.compactRow {
+/* ── Header bar (always visible — finmarket .chat-header style) ── */
+.compactHeader {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--panel);
 }
 
-.compactMedia {
+.compactHeaderLeft {
   display: flex;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.compactHeaderTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.compactHeaderStatus {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.compactHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-.compactVideoWrap {
-  width: 120px;
-  height: 160px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--media-bg);
-  position: relative;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+/* Action buttons in header */
+.compactStartBtn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: var(--accent, #1a1a1a);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
 }
 
-.compactVideoWrap .video {
+.compactStartBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.compactStartBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.compactInterruptBtn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--blue, #3b82f6);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.compactInterruptBtn:hover {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.compactStopBtn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.compactStopBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* ── FTF Stage: video area (finmarket .ftf-video-wrap style) ── */
+.compactStage {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: #000;
+}
+
+.compactVideo {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .compactPlaceholder {
@@ -659,221 +743,132 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: linear-gradient(160deg, var(--card-bg-from), var(--card-bg-to));
-}
-
-.compactPlaceholder span {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(184, 138, 94, 0.18);
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--gold);
-}
-
-.compactGlow {
-  position: absolute;
-  inset: -1px;
-  border-radius: 14px;
-  border: 2px solid rgba(59, 130, 246, 0.5);
-  pointer-events: none;
-  animation: pulseGlow 1.5s ease-in-out infinite;
-}
-
-.compactCameraWrap {
-  width: 120px;
-  height: 160px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: linear-gradient(160deg, var(--card-bg-from), var(--card-bg-to));
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.compactCamOff {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.compactIcon {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  background: rgba(184, 138, 94, 0.12);
-  border: 1px solid var(--border);
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--gold);
-  flex-shrink: 0;
-  transition: box-shadow 0.3s;
-}
-
-.compactSpeaking {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-  animation: compactPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes compactPulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-  50%      { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3); }
-}
-
-.compactInfo {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
+  background: linear-gradient(160deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%);
 }
 
-.compactTitle {
-  font-size: 15px;
-  font-weight: 700;
+.compactAvatarBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(184, 138, 94, 0.18);
+  border: 1px solid rgba(184, 138, 94, 0.35);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.compactPlaceholderTitle {
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text);
   letter-spacing: -0.3px;
 }
 
-.compactStatusRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.compactPlaceholderSub {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
 }
 
-.compactLabel {
-  font-size: 12px;
+/* Speaking glow */
+.compactGlow {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+  pointer-events: none;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+/* Camera PIP — bottom-left corner */
+.compactCameraPip {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.compactCamOff {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── STS Stage: centered mic circle (finmarket .sts-visualizer style) ── */
+.compactStsStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px 20px;
+}
+
+.compactStsCircle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  transition: all 0.3s;
+}
+
+.compactSpeaking {
+  border-color: var(--blue, #3b82f6);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 0 24px rgba(59, 130, 246, 0.1);
+  animation: compactPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes compactPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+  50%      { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.25); }
+}
+
+.compactStsLabel {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--muted);
 }
 
-.compactToggles {
-  display: flex;
-  gap: 6px;
-}
-
-.compactToggle {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: transparent;
-  cursor: pointer;
-  font-size: 17px;
-  display: grid;
-  place-items: center;
-  transition: all 0.15s;
-}
-
-.compactToggle:hover:not(:disabled) {
-  background: var(--overlay-soft);
-}
-
-.compactToggle:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.compactToggleOn {
-  background: rgba(184, 138, 94, 0.15);
-  border-color: rgba(184, 138, 94, 0.5);
-}
-
-.compactStartBtn {
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: var(--gold);
-  color: #fff;
-  border: none;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.compactStartBtn:hover:not(:disabled) {
-  background: var(--gold-dim);
-}
-
-.compactStartBtn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.compactInterruptBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(37, 99, 235, 0.12);
-  color: var(--blue);
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  font-size: 14px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-
-.compactInterruptBtn:hover {
-  background: rgba(37, 99, 235, 0.22);
-}
-
-.compactStopBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  font-size: 12px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-
-.compactStopBtn:hover {
-  background: rgba(220, 38, 38, 0.18);
-}
-
-/* Hide compact panel on mobile — full AvatarPanel is used instead */
+/* ── Compact mobile ── */
 @media (max-width: 768px) {
-  .compactPanel {
-    padding: 8px 12px;
+  .compactHeader {
+    padding: 10px 12px;
   }
-  .compactVideoWrap,
-  .compactCameraWrap {
-    width: 44px;
-    height: 56px;
-    border-radius: 8px;
+  .compactStage {
+    height: 180px;
   }
-  .compactIcon {
-    width: 40px;
-    height: 40px;
-    font-size: 15px;
+  .compactCameraPip {
+    width: 56px;
+    height: 75px;
+    border-radius: 6px;
+    bottom: 8px;
+    left: 8px;
   }
-  .compactTitle {
-    font-size: 12px;
+  .compactStsCircle {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
   }
-  .compactStartBtn {
-    padding: 6px 12px;
-    font-size: 12px;
+  .compactStsStage {
+    padding: 20px 16px;
+    gap: 10px;
   }
 }
 
