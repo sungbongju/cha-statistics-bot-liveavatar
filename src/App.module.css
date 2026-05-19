@@ -11,3 +11,22 @@
     flex-direction: column;
   }
 }
+
+/* 퀴즈 ↔ 챗 전환 버튼 (ChatPanel 하단에서 사용) */
+.quizSwitchBtn {
+  margin-top: 4px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quizSwitchBtn:hover {
+  background: rgba(184, 138, 94, 0.1);
+}

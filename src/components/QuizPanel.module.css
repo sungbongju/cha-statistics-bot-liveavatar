@@ -1,0 +1,555 @@
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding: 32px 24px;
+  background: var(--bg);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 챕터 헤더 */
+.chapterHeader {
+  text-align: center;
+  margin-bottom: 28px;
+  max-width: 600px;
+}
+
+.chapterTag {
+  display: inline-block;
+  background: var(--gold);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.chapterTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.chapterDesc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* 퀴즈 영역 */
+.quizArea {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 카드 */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.qNumber {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+/* 진도 바 */
+.progressBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progressText {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 질문 */
+.questionArea {
+  margin-bottom: 20px;
+}
+
+.questionText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+/* 선택지 */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.option:hover:not(:disabled) {
+  border-color: rgba(184, 138, 94, 0.4);
+  background: rgba(184, 138, 94, 0.05);
+}
+
+.option.selected {
+  border-color: var(--gold);
+  background: rgba(184, 138, 94, 0.1);
+}
+
+.option.correct {
+  border-color: var(--green);
+  background: rgba(22, 163, 74, 0.08);
+  animation: pulse 0.3s ease;
+}
+
+.option.wrong {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.06);
+  animation: shake 0.3s ease;
+}
+
+.option.dimmed {
+  opacity: 0.45;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.01); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.optionLetter {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.option.selected .optionLetter {
+  background: var(--gold);
+  color: #fff;
+}
+
+.option.correct .optionLetter {
+  background: var(--green);
+  color: #fff;
+}
+
+.option.wrong .optionLetter {
+  background: #dc2626;
+  color: #fff;
+}
+
+.optionText {
+  font-size: 14px;
+  line-height: 1.6;
+  padding-top: 3px;
+  word-break: keep-all;
+}
+
+.checkMark {
+  margin-left: auto;
+  color: var(--green);
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.xMark {
+  margin-left: auto;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* 해설 */
+.explanation {
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.explanationCorrect {
+  background: rgba(22, 163, 74, 0.06);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.explanationWrong {
+  background: rgba(220, 38, 38, 0.04);
+  border: 1px solid rgba(220, 38, 38, 0.15);
+}
+
+.explanationHeader {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.explanationCorrect .explanationHeader {
+  color: var(--green);
+}
+
+.explanationWrong .explanationHeader {
+  color: #dc2626;
+}
+
+.explanationText {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+/* 하단 버튼 */
+.cardActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.hintBtn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hintBtn:hover {
+  border-color: rgba(184, 138, 94, 0.4);
+  color: var(--text);
+}
+
+.submitBtn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--gold-dim);
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nextQuestionBtn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  animation: fadeIn 0.3s ease;
+}
+
+.nextQuestionBtn:hover {
+  background: var(--gold-dim);
+  transform: translateY(-1px);
+}
+
+/* ── 완료 화면 ── */
+.completeCard {
+  text-align: center;
+  padding: 48px 32px;
+  max-width: 420px;
+  animation: slideUp 0.4s ease;
+}
+
+.completeIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin: 0 auto 20px;
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.perfect {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+}
+
+.passing {
+  background: linear-gradient(135deg, var(--green), #15803d);
+  color: #fff;
+}
+
+.failing {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.completeTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.completeSubtitle {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.scoreDisplay {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.scoreNumber {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.scoreDivider {
+  font-size: 28px;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.scoreTotal {
+  font-size: 28px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.scorePct {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.completeHint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.completeActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.retryBtn {
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.retryBtn:hover {
+  border-color: var(--gold);
+  background: rgba(184, 138, 94, 0.08);
+}
+
+.nextBtn {
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.nextBtn:hover {
+  background: var(--gold-dim);
+  transform: translateY(-1px);
+}
+
+/* ── 빈 상태 ── */
+.empty {
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.emptyDesc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── 모바일 ── */
+@media (max-width: 768px) {
+  .panel {
+    padding: 20px 14px;
+  }
+
+  .chapterHeader {
+    margin-bottom: 20px;
+  }
+
+  .chapterTitle {
+    font-size: 18px;
+  }
+
+  .card {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .questionText {
+    font-size: 15px;
+  }
+
+  .option {
+    padding: 12px 14px;
+  }
+
+  .optionText {
+    font-size: 13px;
+  }
+
+  .completeCard {
+    padding: 32px 20px;
+  }
+
+  .scoreNumber {
+    font-size: 40px;
+  }
+
+  .completeActions {
+    flex-direction: column;
+  }
+}

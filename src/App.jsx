@@ -1,11 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import AvatarPanel from './components/AvatarPanel'
 import ChatPanel from './components/ChatPanel'
+import ChapterNav from './components/ChapterNav'
+import QuizPanel from './components/QuizPanel'
 import AuthModal from './components/AuthModal'
 import SurveyModal from './components/SurveyModal'
 import styles from './App.module.css'
 import { getUser, clearAuth, verifyToken, newSessionId, saveChat } from './lib/api'
 import { MicRecorder, isMicRecorderSupported } from './lib/stt'
+
+// 퀴즈 데이터 — Vite JSON import (11챕터 75문제)
+import quizDataRaw from './data/quiz-data.json'
+const quizData = quizDataRaw || { chapters: [] }
 
 // LiveAvatar (HeyGen 후속, LiveKit 기반 WebRTC). avatar_id는 박대근 교수님 워크스페이스의 LiveAvatar UUID.
 const AVATAR_ID = '3554efce-af84-4701-981e-2cbd46e991af'
@@ -182,6 +188,15 @@ export default function App() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'))
   }, [])
   const [cameraStream, setCameraStream] = useState(null)
+  // 퀴즈 모드 상태
+  const [appMode, setAppMode]           = useState('quiz')   // 'quiz' | 'chat'
+  const [currentChapter, setCurrentChapter] = useState(null)
+  const [quizProgress, setQuizProgress] = useState(() => {
+    try {
+      const saved = localStorage.getItem('stats-quiz-progress')
+      return saved ? JSON.parse(saved) : {}
+    } catch { return {} }
+  })
   // 첫 접속 시 자동으로 로그인 모달 — 저장된 토큰(=user)이 있으면 안 띄움
   const [authOpen, setAuthOpen]         = useState(() => !getUser())
   const [surveyOpen, setSurveyOpen]     = useState(false)
@@ -818,49 +833,123 @@ export default function App() {
     }
   }, [])
 
+  // ─── 퀴즈 핸들러 ───────────────────────────────────
+  const handleQuizComplete = useCallback((chapterId, score, total) => {
+    const isPassing = (score / total) >= 0.8
+    setQuizProgress(prev => {
+      const next = {
+        ...prev,
+        [chapterId]: { completed: isPassing, score, total }
+      }
+      localStorage.setItem('stats-quiz-progress', JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  const handleQuizHint = useCallback((question) => {
+    // 퀴즈에서 힌트 요청 → 챗봇 모드로 전환 + 힌트 메시지 전송
+    setAppMode('chat')
+    // 텍스트 모드로 시작하고 힌트 질문 전송
+    if (status === 'idle') {
+      sessionRef.current = null
+      sessionIdRef.current = newSessionId()
+      historyRef.current = []
+      setVideoReady(false)
+      setStatus('connected')
+      setMessages([
+        { role: 'assistant', text: '무엇이 궁금하세요? 힌트를 드릴게요.' },
+        { role: 'user', text: `이 문제에 대해 힌트를 주세요: "${question.question}"` }
+      ])
+      // 봇에게 힌트 요청
+      setTimeout(() => {
+        sendMessage(`이 문제에 대해 힌트를 주세요: "${question.question}" (힌트: ${question.hint})`)
+      }, 100)
+    }
+  }, [status, sendMessage])
+
+  const handleNextChapter = useCallback(() => {
+    if (!currentChapter) return
+    const chapters = quizData.chapters || []
+    const idx = chapters.findIndex(c => c.id === currentChapter)
+    if (idx >= 0 && idx < chapters.length - 1) {
+      setCurrentChapter(chapters[idx + 1].id)
+    }
+  }, [currentChapter])
+
+  const quizChapters = quizData.chapters || []
+  const currentChapterData = quizChapters.find(c => c.id === currentChapter) || null
+  const hasNextChapter = (() => {
+    if (!currentChapter) return false
+    const idx = quizChapters.findIndex(c => c.id === currentChapter)
+    return idx >= 0 && idx < quizChapters.length - 1
+  })()
+
   const isChatConnected = status !== 'idle' && status !== 'connecting'
 
   return (
     <div className={styles.app}>
-      <AvatarPanel
-        status={status}
-        mode={conversationMode}
-        onModeChange={changeConversationMode}
-        videoRef={videoRef}
-        audioRef={audioRef}
-        userVideoRef={userVideoRef}
-        videoReady={videoReady}
-        cameraActive={Boolean(cameraStream)}
-        onStart={startConversation}
-        onStop={stopAvatar}
-        onInterrupt={interruptAvatar}
-        isListening={isListening}
-      />
-      <ChatPanel
-        messages={messages}
-        isProcessing={isProcessing}
-        onSend={sendMessage}
-        connected={isChatConnected}
-        isListening={isListening}
-        onToggleMic={toggleMic}
-        micEnabled={conversationMode !== 'ttt' && isChatConnected}
-        micAvailable={conversationMode !== 'ttt'}
-        mode={conversationMode}
-        user={user}
-        onLoginClick={() => setAuthOpen(true)}
-        onLogout={handleLogout}
-        onOpenSurvey={() => {
-          const liveSid = sessionIdRef.current
-          const sid = liveSid || lastEndedSessionIdRef.current || null
-          const liveModes = Array.from(modesUsedRef.current)
-          const modes = liveModes.length ? liveModes : lastEndedModesRef.current
-          setSurveySessionId(sid)
-          setSurveyModesUsed(modes)
-          setSurveyOpen(true)
-        }}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      {appMode === 'quiz' ? (
+        <>
+          <ChapterNav
+            chapters={quizChapters}
+            progress={quizProgress}
+            currentChapter={currentChapter}
+            onSelect={setCurrentChapter}
+            onModeSwitch={() => setAppMode('chat')}
+          />
+          <QuizPanel
+            chapter={currentChapterData}
+            progress={quizProgress[currentChapter] || {}}
+            onComplete={handleQuizComplete}
+            onHint={handleQuizHint}
+            onNextChapter={handleNextChapter}
+            hasNextChapter={hasNextChapter}
+          />
+        </>
+      ) : (
+        <>
+          <AvatarPanel
+            status={status}
+            mode={conversationMode}
+            onModeChange={changeConversationMode}
+            videoRef={videoRef}
+            audioRef={audioRef}
+            userVideoRef={userVideoRef}
+            videoReady={videoReady}
+            cameraActive={Boolean(cameraStream)}
+            onStart={startConversation}
+            onStop={stopAvatar}
+            onInterrupt={interruptAvatar}
+            isListening={isListening}
+          />
+          <ChatPanel
+            messages={messages}
+            isProcessing={isProcessing}
+            onSend={sendMessage}
+            connected={isChatConnected}
+            isListening={isListening}
+            onToggleMic={toggleMic}
+            micEnabled={conversationMode !== 'ttt' && isChatConnected}
+            micAvailable={conversationMode !== 'ttt'}
+            mode={conversationMode}
+            user={user}
+            onLoginClick={() => setAuthOpen(true)}
+            onLogout={handleLogout}
+            onOpenSurvey={() => {
+              const liveSid = sessionIdRef.current
+              const sid = liveSid || lastEndedSessionIdRef.current || null
+              const liveModes = Array.from(modesUsedRef.current)
+              const modes = liveModes.length ? liveModes : lastEndedModesRef.current
+              setSurveySessionId(sid)
+              setSurveyModesUsed(modes)
+              setSurveyOpen(true)
+            }}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onQuizSwitch={() => setAppMode('quiz')}
+          />
+        </>
+      )}
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
