@@ -765,7 +765,8 @@ export default function App() {
             body: JSON.stringify({
               message: greetingPrompt,
               history: [],
-              images: frame ? [frame] : []
+              images: frame ? [frame] : [],
+              isGreeting: true
             })
           })
           const data = await res.json()
