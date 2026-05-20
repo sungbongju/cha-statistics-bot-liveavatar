@@ -3,362 +3,450 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>// CHA / USAGE + TRUST.SURVEY DASHBOARD //</title>
+<title>경영통계 교육봇 · 학습자 인식 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #08090c;
-    --panel:     #0e1014;
-    --panel-2:   #131620;
-    --line:      #1f2330;
-    --line-hot:  #2a3142;
-    --text:      #e8edf3;
-    --muted:     #6b7488;
-    --dim:       #44495a;
-    --lime:   #aaff00;
-    --cyan:   #00e5ff;
-    --mag:    #ff2bd6;
-    --orange: #ff8a00;
-    --gold:   #ffd633;
-    --plum:   #c084fc;
-    --red:    #ff3355;
+    --bg:        #faf8f3;
+    --panel:     #ffffff;
+    --panel-2:   #f5f1e8;
+    --line:      #e8e1d3;
+    --line-hot:  #d4c9b3;
+    --text:      #2a2620;
+    --muted:     #8a8275;
+    --dim:       #b5ad9d;
+
+    --gold:      #b88a5e;
+    --gold-bright: #d4a574;
+    --gold-soft: #e8d3b8;
+    --forest:    #5a7d6b;
+    --rust:      #c4554d;
+    --slate:     #4a6b85;
+    --plum:      #8c6b9d;
+    --ink:       #2a2620;
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body {
     margin: 0; padding: 0;
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(170,255,0,0.04), transparent 60%),
-      radial-gradient(900px 600px at -10% 110%, rgba(0,229,255,0.04), transparent 60%),
+      radial-gradient(800px 400px at 100% 0%, rgba(184,138,94,0.06), transparent 60%),
+      radial-gradient(600px 400px at 0% 100%, rgba(90,125,107,0.04), transparent 60%),
       var(--bg);
     color: var(--text);
-    font-family: 'JetBrains Mono','Pretendard','Noto Sans KR',ui-monospace,Menlo,Consolas,monospace;
-    font-size: 14px; line-height: 1.5; letter-spacing: 0.01em;
+    font-family: 'Pretendard','Noto Sans KR',sans-serif;
+    font-size: 14px; line-height: 1.55;
     -webkit-font-smoothing: antialiased; min-height: 100vh;
   }
-  body::before {
-    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
-    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px);
-    mix-blend-mode: overlay;
-  }
 
+  /* ── Top Bar ───────────────────────── */
   .topbar {
     position: sticky; top: 0; z-index: 10;
     display: grid; grid-template-columns: auto 1fr auto;
-    align-items: center; gap: 18px; padding: 14px 22px;
-    background: rgba(8,9,12,0.85); backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--line); font-size: 12px;
+    align-items: center; gap: 24px; padding: 18px 28px;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
   }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 13px; letter-spacing: 0.06em; }
-  .brand .dot { width: 8px; height: 8px; background: var(--lime); border-radius: 1px; box-shadow: 0 0 10px var(--lime), 0 0 24px rgba(170,255,0,0.4); }
-  .brand .id { color: var(--lime); }
-  .brand .sep { color: var(--dim); margin: 0 8px; }
-  .brand .sub { color: var(--muted); font-weight: 500; }
-  .status { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
-  .status b { color: var(--text); font-weight: 700; }
-  .status .ok { color: var(--lime); } .status .err { color: var(--red); }
-  .pulse { display: inline-block; width: 6px; height: 6px; background: var(--lime); border-radius: 999px; margin-right: 6px; animation: blink 1.4s steps(2,start) infinite; }
-  @keyframes blink { 50% { opacity: 0.25; } }
-  .topbar .actions { display: flex; gap: 8px; }
-  .btn { background: transparent; color: var(--text); border: 1px solid var(--line-hot); padding: 6px 12px; font: inherit; font-size: 11px; letter-spacing: 0.06em; cursor: pointer; text-transform: uppercase; transition: all 120ms; }
-  .btn:hover { border-color: var(--lime); color: var(--lime); }
-  .btn:active { background: rgba(170,255,0,0.08); }
-
-  main { padding: 22px; max-width: 1280px; margin: 0 auto; position: relative; z-index: 2; }
-
-  /* 섹션 헤더 */
-  .section-title {
-    margin: 28px 0 14px; font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
-    color: var(--lime); text-transform: uppercase; padding-left: 6px; border-left: 3px solid var(--lime);
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-bright));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 16px;
+    box-shadow: 0 4px 12px rgba(184,138,94,0.25);
   }
-  .section-title.alt { color: var(--cyan); border-left-color: var(--cyan); }
-  .section-title:first-child { margin-top: 0; }
-  .section-title small { color: var(--muted); font-weight: 500; margin-left: 10px; letter-spacing: 0.04em; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .brand-title { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; color: var(--ink); }
+  .brand-sub { font-size: 11px; color: var(--muted); font-weight: 500; }
 
-  /* KPI */
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-  @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-  .kpi { position: relative; padding: 14px 16px 16px;
-    background: linear-gradient(180deg, var(--panel-2), var(--panel));
-    border: 1px solid var(--line); box-shadow: 4px 4px 0 0 #000; }
-  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--lime)); }
-  .kpi[data-c=lime]   { --accent: var(--lime); }
-  .kpi[data-c=cyan]   { --accent: var(--cyan); }
-  .kpi[data-c=mag]    { --accent: var(--mag); }
-  .kpi[data-c=gold]   { --accent: var(--gold); }
-  .kpi[data-c=plum]   { --accent: var(--plum); }
-  .kpi[data-c=orange] { --accent: var(--orange); }
-  .kpi .tag { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
-  .kpi .tag .idx { color: var(--accent, var(--lime)); font-weight: 700; }
-  .kpi .value { font-size: 28px; font-weight: 800; margin-top: 4px; letter-spacing: -0.02em; line-height: 1; }
-  .kpi .value.accent { color: var(--accent, var(--lime)); }
-  .kpi .desc { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .status { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12px; align-items: center; }
+  .status b { color: var(--ink); font-weight: 600; }
+  .status .ok { color: var(--forest); font-weight: 700; }
+  .status .err { color: var(--rust); font-weight: 700; }
+  .pulse {
+    display: inline-block; width: 7px; height: 7px;
+    background: var(--forest); border-radius: 999px; margin-right: 8px;
+    box-shadow: 0 0 0 0 rgba(90,125,107,0.7);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(90,125,107,0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(90,125,107,0); }
+    100% { box-shadow: 0 0 0 0 rgba(90,125,107,0); }
+  }
 
-  .grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
-  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
-  .card { position: relative; background: var(--panel); border: 1px solid var(--line); box-shadow: 4px 4px 0 0 #000; }
-  .card.full { grid-column: 1 / -1; }
-  .card .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); }
-  .card .head h2 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-  .card .head h2 .pre { color: var(--lime); margin-right: 6px; }
-  .card .head .meta { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
-  .card .body { padding: 14px; }
-  .card .body p.sub { margin: 0 0 10px; font-size: 11px; color: var(--muted); }
-  .card::after { content: ""; position: absolute; right: 8px; top: 8px; width: 10px; height: 10px; border-top: 1px solid var(--line-hot); border-right: 1px solid var(--line-hot); }
+  .actions { display: flex; gap: 8px; }
+  .btn {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line-hot);
+    padding: 8px 14px; font: inherit; font-size: 12px; font-weight: 600;
+    border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-primary {
+    background: var(--gold); color: #fff; border-color: var(--gold);
+  }
+  .btn-primary:hover { background: var(--gold-bright); border-color: var(--gold-bright); color: #fff; }
 
-  .chart-wrap { position: relative; width: 100%; height: 260px; }
-  .chart-wrap.tall { height: 540px; }
-  .chart-wrap.donut { height: 220px; }
-  .chart-wrap canvas { display: block; }
+  main { padding: 28px; max-width: 1320px; margin: 0 auto; }
 
-  /* tables */
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { text-align: left; padding: 6px 8px; }
-  th { color: var(--muted); font-weight: 500; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
-  td { border-bottom: 1px dashed var(--line); }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  tr:hover td { background: rgba(170,255,0,0.04); }
-  td .login-tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; letter-spacing: 0.06em; text-transform: uppercase; }
-  td .login-tag.kakao { background: rgba(255,213,51,0.14); color: var(--gold); border: 1px solid rgba(255,213,51,0.4); }
-  td .login-tag.email { background: rgba(0,229,255,0.12); color: var(--cyan); border: 1px solid rgba(0,229,255,0.4); }
+  /* ── Section ───────────────────────── */
+  .section-header {
+    display: flex; align-items: baseline; gap: 14px;
+    margin: 32px 0 16px;
+    padding-left: 14px; border-left: 4px solid var(--gold);
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-header h2 {
+    margin: 0; font-size: 17px; font-weight: 800;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .section-header .section-sub {
+    color: var(--muted); font-size: 12px; font-weight: 500;
+  }
+  .section-header.edu { border-left-color: var(--forest); }
+  .section-header.edu h2 { color: var(--forest); }
 
-  .demo-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  @media (max-width: 900px) { .demo-row { grid-template-columns: repeat(2, 1fr); } }
-  .demo-row .col h3 { font-size: 10px; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
+  /* ── KPI ───────────────────────── */
+  .kpi-grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+  .kpi .kpi-label {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .kpi .kpi-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px; font-weight: 700; color: var(--ink);
+    line-height: 1.1; letter-spacing: -0.02em;
+  }
+  .kpi .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kpi.gold .kpi-value { color: var(--gold); }
+  .kpi.forest .kpi-value { color: var(--forest); }
+  .kpi.slate .kpi-value { color: var(--slate); }
 
-  .err { color: var(--red); font-size: 12px; padding: 10px 14px; background: rgba(255,51,85,0.08); border: 1px solid rgba(255,51,85,0.4); border-left: 3px solid var(--red); margin-bottom: 16px; letter-spacing: 0.04em; }
-  .err::before { content: "[ERR] >> "; color: var(--red); font-weight: 700; }
-  .empty { color: var(--muted); font-size: 11px; padding: 14px 0; text-align: center; }
+  /* ── Card ───────────────────────── */
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px;
+  }
+  .card h3 {
+    margin: 0 0 14px; font-size: 14px; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .card-grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    margin-top: 14px;
+  }
 
-  footer { margin-top: 28px; padding: 14px 0; border-top: 1px solid var(--line); color: var(--dim); font-size: 11px; letter-spacing: 0.06em; display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
-  footer .seg { color: var(--muted); }
-  footer .seg b { color: var(--text); font-weight: 600; }
+  /* ── Construct Bars ───────────────────────── */
+  .construct-list { display: flex; flex-direction: column; gap: 14px; }
+  .construct-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .construct-label {
+    font-size: 12px; font-weight: 600; color: var(--ink);
+  }
+  .construct-label small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .construct-bar {
+    grid-column: 1 / -1; height: 10px;
+    background: var(--panel-2); border-radius: 5px; overflow: hidden;
+    position: relative;
+  }
+  .construct-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+    border-radius: 5px; transition: width 0.4s ease-out;
+  }
+  .construct-bar-fill.high { background: linear-gradient(90deg, var(--forest), #7ba390); }
+  .construct-bar-fill.low  { background: linear-gradient(90deg, var(--rust), #e08079); }
+  .construct-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 700;
+    min-width: 50px; text-align: right; color: var(--ink);
+  }
+  .construct-value small { font-size: 10px; color: var(--muted); font-weight: 500; }
+
+  /* ── Table ───────────────────────── */
+  table.data {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+  }
+  table.data th, table.data td {
+    padding: 9px 10px; border-bottom: 1px solid var(--line);
+    text-align: left; vertical-align: middle;
+  }
+  table.data th {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.04em; background: var(--panel-2);
+  }
+  table.data td.num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    text-align: right; color: var(--ink);
+  }
+  table.data tr:hover td { background: rgba(184,138,94,0.04); }
+
+  .chart-box { position: relative; height: 280px; }
+
+  .free-list { display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; padding-right: 6px; }
+  .free-item {
+    background: var(--panel-2); border-left: 3px solid var(--gold);
+    padding: 10px 12px; border-radius: 6px; font-size: 12.5px; line-height: 1.5;
+  }
+  .free-item .free-meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .free-item.improve { border-left-color: var(--rust); }
+  .free-item .label {
+    display: inline-block; font-size: 10px; padding: 2px 6px;
+    background: var(--gold); color: #fff; border-radius: 3px;
+    margin-right: 6px; font-weight: 700;
+  }
+  .free-item.improve .label { background: var(--rust); }
+
+  .err-box {
+    background: #fff3f0; border: 1px solid var(--rust); color: var(--rust);
+    padding: 12px 16px; border-radius: 8px; margin-top: 12px;
+    font-size: 13px; display: none;
+  }
+
+  footer {
+    margin-top: 40px; padding: 20px 0;
+    border-top: 1px solid var(--line);
+    display: flex; gap: 18px; flex-wrap: wrap;
+    color: var(--muted); font-size: 11px;
+  }
+  footer b { color: var(--ink); font-weight: 600; }
+
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: var(--muted); font-size: 13px;
+  }
+  .empty-state .icon { font-size: 36px; margin-bottom: 8px; opacity: 0.5; }
+
+  @media (max-width: 700px) {
+    main { padding: 16px; }
+    .topbar { padding: 14px 16px; gap: 12px; }
+    .brand-sub { display: none; }
+  }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">
-    <span class="dot"></span>
-    <span>CHA</span><span class="sep">/</span>
-    <span class="id">USAGE + TRUST.SURVEY</span><span class="sep">/</span>
-    <span class="sub">DASHBOARD v2</span>
+    <div class="brand-icon">통</div>
+    <div class="brand-text">
+      <span class="brand-title">경영통계 교육봇</span>
+      <span class="brand-sub">학습자 인식 대시보드 · v2_edu</span>
+    </div>
   </div>
   <div class="status">
-    <span><span class="pulse"></span><b id="status-text">CONNECTING…</b></span>
-    <span>NODE: <b>cha-Bigdata</b></span>
-    <span>UPDATED: <b id="status-updated">—</b></span>
+    <span><span class="pulse"></span><b id="status-text">대기</b></span>
+    <span>업데이트: <b id="status-updated">—</b></span>
   </div>
   <div class="actions">
-    <button id="btn-refresh" class="btn" type="button">[ REFRESH ]</button>
-    <button id="btn-token" class="btn" type="button">[ TOKEN ]</button>
+    <button class="btn" onclick="changeToken()">토큰 변경</button>
+    <button class="btn btn-primary" onclick="load()">새로고침</button>
   </div>
 </header>
 
 <main>
-  <div id="err" class="err" style="display:none"></div>
 
-  <!-- ═════════════ USAGE 섹션 ═════════════ -->
-  <h1 class="section-title">USAGE / 사용 현황 <small>// users + chat_logs (no message body shown)</small></h1>
-
-  <section class="kpis">
-    <div class="kpi" data-c="lime">
-      <div class="tag"><span>// users_total</span><span class="idx">[U-01]</span></div>
-      <div class="value accent" id="ku-users">—</div>
-      <div class="desc"><span id="ku-users-detail">—</span></div>
+  <!-- ── Overview KPIs ──────────────── -->
+  <div class="section-header">
+    <h2>전체 현황</h2>
+    <span class="section-sub">Overview</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi gold">
+      <div class="kpi-label">설문 응답</div>
+      <div class="kpi-value" id="kpi-survey-total">—</div>
+      <div class="kpi-sub"><span id="kpi-survey-valid">—</span>건 유효</div>
     </div>
-    <div class="kpi" data-c="cyan">
-      <div class="tag"><span>// sessions_total</span><span class="idx">[U-02]</span></div>
-      <div class="value accent" id="ku-sessions">—</div>
-      <div class="desc"><span id="ku-anon">익명 세션 — 건</span></div>
+    <div class="kpi forest">
+      <div class="kpi-label">평균 응답시간</div>
+      <div class="kpi-value" id="kpi-duration">—</div>
+      <div class="kpi-sub">초</div>
     </div>
-    <div class="kpi" data-c="mag">
-      <div class="tag"><span>// messages_total</span><span class="idx">[U-03]</span></div>
-      <div class="value accent" id="ku-messages">—</div>
-      <div class="desc"><span id="ku-msg-detail">user — / bot —</span></div>
+    <div class="kpi slate">
+      <div class="kpi-label">평균 종합점수</div>
+      <div class="kpi-value" id="kpi-overall">—</div>
+      <div class="kpi-sub">5점 척도</div>
     </div>
-    <div class="kpi" data-c="gold">
-      <div class="tag"><span>// avg_session_duration</span><span class="idx">[U-04]</span></div>
-      <div class="value accent" id="ku-avgdur">—</div>
-      <div class="desc"><span id="ku-avgturns">평균 사용자 턴 — 회</span></div>
+    <div class="kpi">
+      <div class="kpi-label">대화 세션</div>
+      <div class="kpi-value" id="kpi-sessions">—</div>
+      <div class="kpi-sub"><span id="kpi-users">—</span>명 사용자</div>
     </div>
-  </section>
+  </div>
 
-  <section class="grid">
-    <article class="card full">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>DAILY ACTIVITY</h2>
-        <span class="meta">// 일별 신규 가입 + 일별 세션 + 활성 사용자</span>
+  <!-- ── 학습자 인식 v2_edu ──────────── -->
+  <div class="section-header edu">
+    <h2>학습자 인식 (v2_edu)</h2>
+    <span class="section-sub">Learner Perception · 6 Constructs · 14 Items · 5-point Likert</span>
+  </div>
+
+  <div class="card-grid">
+    <!-- 구인별 평균 -->
+    <div class="card">
+      <h3>구인별 평균 · Construct Means</h3>
+      <div class="construct-list" id="construct-list">
+        <div class="empty-state"><div class="icon">📊</div>아직 응답이 없습니다</div>
       </div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-activity"></canvas></div></div>
-    </article>
-
-    <article class="card">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>SESSION TURN DISTRIBUTION</h2>
-        <span class="meta">// 사용자 턴 수 분포</span>
-      </div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-turns"></canvas></div></div>
-    </article>
-
-    <article class="card">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>HOURLY USAGE</h2>
-        <span class="meta">// 0–23시 사용자 발화 수</span>
-      </div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-hourly"></canvas></div></div>
-    </article>
-
-    <article class="card">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>SIGNUP TYPE</h2>
-        <span class="meta">// 카카오 vs 이메일</span>
-      </div>
-      <div class="body"><div class="chart-wrap donut"><canvas id="chart-signup"></canvas></div></div>
-    </article>
-
-    <article class="card">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>REVISIT DISTRIBUTION</h2>
-        <span class="meta">// users.visit_count</span>
-      </div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-revisit"></canvas></div></div>
-    </article>
-
-    <article class="card full">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>TOP USERS</h2>
-        <span class="meta">// 메시지 수 기준 Top 10 (PII: 이메일/카카오id 비공개)</span>
-      </div>
-      <div class="body">
-        <table id="tbl-top-users">
-          <thead><tr>
-            <th>id</th><th>name</th><th>type</th>
-            <th class="num">messages</th><th class="num">user_msgs</th>
-            <th class="num">sessions</th><th class="num">visits</th>
-            <th>last_login</th>
-          </tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </article>
-  </section>
-
-  <!-- ═════════════ SURVEY 섹션 ═════════════ -->
-  <h1 class="section-title alt">TRUST SURVEY / 신뢰 컴포넌트 <small>// survey_responses v1</small></h1>
-
-  <section class="kpis">
-    <div class="kpi" data-c="lime">
-      <div class="tag"><span>// total_responses</span><span class="idx">[S-01]</span></div>
-      <div class="value accent" id="kpi-total">—</div>
-      <div class="desc">flag_too_fast included</div>
     </div>
-    <div class="kpi" data-c="cyan">
-      <div class="tag"><span>// valid_responses (≥60s)</span><span class="idx">[S-02]</span></div>
-      <div class="value accent" id="kpi-valid">—</div>
-      <div class="desc">flag_too_fast = 0</div>
+
+    <!-- 문항별 평균 -->
+    <div class="card">
+      <h3>문항별 평균 · Item Means</h3>
+      <table class="data">
+        <thead><tr><th>문항</th><th class="num">M</th><th class="num">SD</th><th class="num">n</th></tr></thead>
+        <tbody id="tbl-items"></tbody>
+      </table>
     </div>
-    <div class="kpi" data-c="mag">
-      <div class="tag"><span>// q24_overall_trust</span><span class="idx">[S-03]</span></div>
-      <div class="value accent" id="kpi-q24">—</div>
-      <div class="desc">yes-rate (valid only)</div>
+
+    <!-- 모드 사용 분포 -->
+    <div class="card">
+      <h3>주 사용 모드 · Primary Mode</h3>
+      <div class="chart-box"><canvas id="chart-mode-primary"></canvas></div>
     </div>
-    <div class="kpi" data-c="gold">
-      <div class="tag"><span>// total_yes_count</span><span class="idx">[S-04]</span></div>
-      <div class="value accent" id="kpi-total-score">—</div>
-      <div class="desc">avg out of 18</div>
+
+    <div class="card">
+      <h3>가장 도움된 모드 · Most Helpful Mode</h3>
+      <div class="chart-box"><canvas id="chart-mode-helpful"></canvas></div>
     </div>
-  </section>
 
-  <section class="grid">
-    <article class="card full">
-      <div class="head">
-        <h2><span class="pre">&gt;&gt;</span>18 COMPONENTS — YES RATE</h2>
-        <span class="meta">// Q06 .. Q24 // colored by Layer</span>
+    <!-- 사전수준 -->
+    <div class="card">
+      <h3>사전 통계수준별 효과 · By Prior Level</h3>
+      <div class="chart-box"><canvas id="chart-by-prior"></canvas></div>
+    </div>
+
+    <!-- 인구통계 -->
+    <div class="card">
+      <h3>인구통계 · Demographics</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div><h4 style="margin:0 0 8px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">학년</h4><table class="data" id="tbl-grade"><tbody></tbody></table></div>
+        <div><h4 style="margin:0 0 8px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">성별</h4><table class="data" id="tbl-gender"><tbody></tbody></table></div>
       </div>
-      <div class="body">
-        <p class="sub">L1 정체성 <span style="color:var(--mag)">●</span> &nbsp; L2 답변 품질 <span style="color:var(--orange)">●</span> &nbsp; L3 자연스러움 <span style="color:var(--lime)">●</span> &nbsp; L4 정책 신호 <span style="color:var(--cyan)">●</span> &nbsp; OVERALL <span style="color:var(--gold)">●</span></p>
-        <div class="chart-wrap tall"><canvas id="chart-components"></canvas></div>
+      <h4 style="margin:12px 0 8px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">전공 (상위 10)</h4>
+      <table class="data" id="tbl-major"><tbody></tbody></table>
+    </div>
+
+    <!-- 자유응답 -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <h3>자유응답 · Free Responses (최신 20)</h3>
+      <div class="free-list" id="free-list">
+        <div class="empty-state"><div class="icon">💬</div>아직 자유응답이 없습니다</div>
       </div>
-    </article>
+    </div>
+  </div>
 
-    <article class="card">
-      <div class="head"><h2><span class="pre">&gt;&gt;</span>4-LAYER SCORE</h2><span class="meta">// percent of layer max</span></div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-layers"></canvas></div></div>
-    </article>
+  <!-- ── 사용 통계 ──────────────────── -->
+  <div class="section-header">
+    <h2>사용 통계</h2>
+    <span class="section-sub">Usage</span>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <h3>일자별 채팅</h3>
+      <div class="chart-box"><canvas id="chart-chats-daily"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>시간대별 사용</h3>
+      <div class="chart-box"><canvas id="chart-chats-hourly"></canvas></div>
+    </div>
+  </div>
 
-    <article class="card">
-      <div class="head"><h2><span class="pre">&gt;&gt;</span>DAILY TREND</h2><span class="meta">// count + avg score</span></div>
-      <div class="body"><div class="chart-wrap"><canvas id="chart-daily"></canvas></div></div>
-    </article>
+  <div id="err" class="err-box"></div>
 
-    <article class="card full">
-      <div class="head"><h2><span class="pre">&gt;&gt;</span>DEMOGRAPHIC SLICES</h2><span class="meta">// grade · gender · major · mbti</span></div>
-      <div class="body">
-        <div class="demo-row">
-          <div class="col"><h3>학년 / GRADE</h3><table id="tbl-grade"><thead><tr><th>k</th><th class="num">n</th><th class="num">avg</th></tr></thead><tbody></tbody></table></div>
-          <div class="col"><h3>성별 / GENDER</h3><table id="tbl-gender"><thead><tr><th>k</th><th class="num">n</th><th class="num">avg</th></tr></thead><tbody></tbody></table></div>
-          <div class="col"><h3>1전공 / MAJOR</h3><table id="tbl-major"><thead><tr><th>k</th><th class="num">n</th><th class="num">avg</th></tr></thead><tbody></tbody></table></div>
-          <div class="col"><h3>MBTI</h3><table id="tbl-mbti"><thead><tr><th>k</th><th class="num">n</th><th class="num">avg</th></tr></thead><tbody></tbody></table></div>
-        </div>
-      </div>
-    </article>
-  </section>
-
-  <footer>
-    <span class="seg">CLIENT: <b>cha-interview-bot.vercel.app</b></span>
-    <span class="seg">UPSTREAM: <b>aiforalab.com / statistics-api</b></span>
-    <span class="seg">SCHEMA: <b>users · chat_logs · survey_responses v1</b></span>
-  </footer>
 </main>
+
+<footer>
+  <span>CLIENT: <b>cha-statistics-bot-liveavatar.vercel.app</b></span>
+  <span>UPSTREAM: <b>aiforalab.com / statistics-api</b></span>
+  <span>SCHEMA: <b>cha_statistics_db</b></span>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 (function() {
-  // 같은 도메인의 school-api 프록시 호출 (Vercel rewrites)
   const API = '/api/school-api';
   const TOKEN_KEY = 'cha_dashboard_token';
 
-  const QLABEL = {
-    q06_digital_twin:'Q06 디지털 트윈', q07_institution_id:'Q07 기관 신원', q08_ai_disclosure:'Q08 AI 명시',
-    q09_rag_grounding:'Q09 RAG 사실성', q10_limit_admit:'Q10 한계 인정', q11_warm_tone:'Q11 따뜻한 말투', q12_format_consistency:'Q12 형식 일관성',
-    q13_latency_pacing:'Q13 응답 속도', q14_echo_guard:'Q14 에코 방어', q15_esc_interrupt:'Q15 인터럽트', q16_avatar_embodiment:'Q16 아바타 입동기', q17_mode_switch:'Q17 모드 전환',
-    q18_consent_ui:'Q18 동의 UI', q19_guest_browse:'Q19 비로그인 둘러보기', q20_korean_ordinal:'Q20 한글 서수', q21_visit_tracking:'Q21 방문 추적', q22_tts_normalize:'Q22 TTS 정규화', q23_kakao_redirect:'Q23 카카오 외부 전환',
-    q24_overall_trust:'Q24 전반 신뢰'
+  const CONSTRUCT_INFO = {
+    A_quiz:       { label: 'A. 퀴즈-챗봇 연동',      sub: '퀴즈 연동형 novelty' },
+    B_multimodal: { label: 'B. 멀티모달 인터랙션',   sub: '모드 전환' },
+    C_presence:   { label: 'C. 교수자 실재감',       sub: 'Teacher Presence' },
+    D_accuracy:   { label: 'D. 정확성·안전감',       sub: 'Trust' },
+    E_flow:       { label: 'E. 학습몰입·호기심',     sub: 'Flow' },
+    F_learning:   { label: 'F. 인지된 학습효과',     sub: 'Perceived Learning' },
   };
-  const Q_LAYER = {
-    q06_digital_twin:1, q07_institution_id:1, q08_ai_disclosure:1,
-    q09_rag_grounding:2, q10_limit_admit:2, q11_warm_tone:2, q12_format_consistency:2,
-    q13_latency_pacing:3, q14_echo_guard:3, q15_esc_interrupt:3, q16_avatar_embodiment:3, q17_mode_switch:3,
-    q18_consent_ui:4, q19_guest_browse:4, q20_korean_ordinal:4, q21_visit_tracking:4, q22_tts_normalize:4, q23_kakao_redirect:4,
-    q24_overall_trust:5
+
+  const ITEM_LABEL = {
+    q_quiz_link:         'Q1 퀴즈 즉시 질문',
+    q_quiz_explain:      'Q2 챗봇 풀이 도움',
+    q_mode_switch:       'Q3 모드 전환 가능',
+    q_teacher_presence:  'Q4 교수자 실재감',
+    q_warm_atmosphere:   'Q5 부담 없는 분위기',
+    q_consistent_explain:'Q6 강의자료 일관성',
+    q_accuracy:          'Q7 답변 정확성',
+    q_limit_admit:       'Q8 한계 솔직히 인정',
+    q_flow:              'Q9 시간 빠르게 감',
+    q_curiosity:         'Q10 호기심 생김',
+    q_understanding:     'Q11 개념 이해',
+    q_confidence:        'Q12 자신감 생김',
+    q_will_reuse:        'Q13 재사용 의사',
+    q_overall:           'Q14 전반 도움',
   };
-  const C = { L1:'#ff2bd6', L2:'#ff8a00', L3:'#aaff00', L4:'#00e5ff', L5:'#ffd633', dim:'#1f2330', text:'#e8edf3', muted:'#6b7488' };
-  const LAYER_COLOR = { 1:C.L1, 2:C.L2, 3:C.L3, 4:C.L4, 5:C.L5 };
+
+  const COLORS = {
+    gold:    '#b88a5e',
+    goldBr:  '#d4a574',
+    forest:  '#5a7d6b',
+    rust:    '#c4554d',
+    slate:   '#4a6b85',
+    plum:    '#8c6b9d',
+    muted:   '#8a8275',
+    line:    '#e8e1d3',
+    ink:     '#2a2620',
+  };
+  const MODE_COLOR = { ftf: COLORS.gold, sts: COLORS.forest, ttt: COLORS.slate };
+  const MODE_LABEL = { ftf: 'FTF 아바타', sts: 'STS 음성', ttt: 'TTT 텍스트' };
 
   const charts = {};
-  const COMMON = { responsive:true, maintainAspectRatio:false, animation:false, resizeDelay:120 };
+  const COMMON_CHART = { responsive: true, maintainAspectRatio: false, animation: false };
 
-  Chart.defaults.font.family = "'JetBrains Mono','Pretendard','Noto Sans KR',monospace";
-  Chart.defaults.color = C.text;
-  Chart.defaults.borderColor = C.dim;
+  Chart.defaults.font.family = "'Pretendard','Noto Sans KR',sans-serif";
+  Chart.defaults.color = COLORS.ink;
+  Chart.defaults.borderColor = COLORS.line;
+
+  function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+  function setError(msg) { const el = document.getElementById('err'); if (msg) { el.textContent = msg; el.style.display='block'; } else { el.style.display='none'; } }
+  function setStatus(t, ok) { const s = document.getElementById('status-text'); s.textContent = t; s.className = ok === true ? 'ok' : (ok === false ? 'err' : ''); }
+  function fmtNum(v, d) { return v == null ? '—' : Number(v).toFixed(d != null ? d : 2); }
+  function fmtInt(v) { return v == null ? '—' : Number(v).toLocaleString('ko-KR'); }
 
   function getToken() {
     let t = sessionStorage.getItem(TOKEN_KEY);
     if (!t) {
-      t = window.prompt('// dashboard token required');
+      t = window.prompt('대시보드 토큰을 입력하세요');
       if (t) sessionStorage.setItem(TOKEN_KEY, t.trim());
     }
     return t;
   }
-  function setError(msg) { const el=document.getElementById('err'); if(msg){el.textContent=msg;el.style.display='block';}else{el.style.display='none';} }
-  function setStatus(t, ok) { const s=document.getElementById('status-text'); s.textContent=t; s.className = ok===true?'ok':(ok===false?'err':''); }
-  function fmtPct(v) { return v == null ? '—' : (Math.round(v*10)/10) + '%'; }
-  function fmtNum(v, d) { return v == null ? '—' : Number(v).toFixed(d!=null?d:1); }
-  function fmtInt(v) { return v == null ? '—' : Number(v).toLocaleString('ko-KR'); }
-  function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+  window.changeToken = function() {
+    sessionStorage.removeItem(TOKEN_KEY);
+    load();
+  };
 
   async function callApi(action) {
     const token = getToken();
@@ -370,7 +458,7 @@
     });
     const data = await r.json();
     if (!data || !data.success) {
-      const msg = data && data.error ? data.error : '알 수 없는 오류';
+      const msg = data && data.error ? data.error : 'unknown error';
       if (msg.indexOf('token') >= 0) sessionStorage.removeItem(TOKEN_KEY);
       throw new Error(msg);
     }
@@ -378,255 +466,236 @@
   }
 
   async function load() {
-    setError(''); setStatus('CONNECTING…');
-    let usage, survey;
+    setError(''); setStatus('연결 중…');
+    let usage, edu;
     try {
-      [usage, survey] = await Promise.all([callApi('usage_summary'), callApi('survey_summary')]);
+      [usage, edu] = await Promise.all([
+        callApi('usage_summary'),
+        callApi('survey_summary_v2_edu')
+      ]);
     } catch (e) {
-      setStatus('OFFLINE', false);
+      setStatus('오류', false);
       setError(e.message);
       return;
     }
     setStatus('LIVE', true);
     document.getElementById('status-updated').textContent =
       usage.as_of ? new Date(usage.as_of).toLocaleString('ko-KR') : '—';
-    renderUsage(usage);
-    renderSurvey(survey);
+
+    renderUsageKpi(usage);
+    renderEdu(edu);
+  }
+  window.load = load;
+
+  function renderUsageKpi(usage) {
+    const t = usage.totals || {};
+    document.getElementById('kpi-sessions').textContent = fmtInt(t.sessions_total);
+    document.getElementById('kpi-users').textContent = fmtInt(t.users_total);
+
+    // 일자별 차트
+    if (usage.chats_daily) {
+      destroyChart('chats_daily');
+      const ctx = document.getElementById('chart-chats-daily').getContext('2d');
+      charts.chats_daily = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: usage.chats_daily.map(d => d.day),
+          datasets: [{
+            label: '채팅 수', data: usage.chats_daily.map(d => d.cnt),
+            backgroundColor: COLORS.gold, borderRadius: 4
+          }]
+        },
+        options: {
+          ...COMMON_CHART,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, grid: { color: COLORS.line } }
+          }
+        }
+      });
+    }
+
+    // 시간대별
+    if (usage.chats_hourly) {
+      destroyChart('chats_hourly');
+      const ctx = document.getElementById('chart-chats-hourly').getContext('2d');
+      charts.chats_hourly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: usage.chats_hourly.map(d => d.hour + '시'),
+          datasets: [{
+            label: '채팅 수', data: usage.chats_hourly.map(d => d.cnt),
+            backgroundColor: COLORS.slate, borderRadius: 4
+          }]
+        },
+        options: {
+          ...COMMON_CHART,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, grid: { color: COLORS.line } }
+          }
+        }
+      });
+    }
   }
 
-  // ═════════ USAGE ═════════
-  function renderUsage(u) {
-    const t = u.totals || {}, sa = u.session_avg || {};
-    document.getElementById('ku-users').textContent = fmtInt(t.users_total);
-    document.getElementById('ku-users-detail').textContent =
-      `카카오 ${t.users_kakao||0} · 이메일 ${t.users_email||0}`;
-    document.getElementById('ku-sessions').textContent = fmtInt(t.sessions_total);
-    document.getElementById('ku-anon').textContent =
-      `익명 세션 ${t.anon_sessions||0}건 · 익명 메시지 ${t.anon_messages||0}건`;
-    document.getElementById('ku-messages').textContent = fmtInt(t.messages_total);
-    document.getElementById('ku-msg-detail').textContent =
-      `user ${t.user_messages||0} / bot ${t.bot_messages||0}`;
-    document.getElementById('ku-avgdur').textContent =
-      sa.minutes != null ? sa.minutes + ' 분' : '—';
-    document.getElementById('ku-avgturns').textContent =
-      sa.turns != null ? `평균 사용자 턴 ${sa.turns} 회` : '평균 사용자 턴 — 회';
+  function renderEdu(edu) {
+    // KPIs
+    const t = edu.totals || {};
+    document.getElementById('kpi-survey-total').textContent = fmtInt(t.total);
+    document.getElementById('kpi-survey-valid').textContent = fmtInt(t.valid);
+    document.getElementById('kpi-duration').textContent = t.avg_duration_sec != null ? fmtNum(t.avg_duration_sec, 0) : '—';
+    document.getElementById('kpi-overall').textContent = edu.overall_stats && edu.overall_stats.mean != null ? fmtNum(edu.overall_stats.mean, 2) : '—';
 
-    renderActivity(u.signups || [], u.activity || []);
-    renderTurns(u.turn_hist || {});
-    renderHourly(u.hourly || []);
-    renderSignupDonut(t);
-    renderRevisit(u.revisit || []);
-    renderTopUsers(u.top_users || []);
+    // 응답 0건이면 empty state 유지
+    if (!t.total || t.total === 0) {
+      return;
+    }
+
+    // 구인별 평균 (가로 막대)
+    const list = document.getElementById('construct-list');
+    list.innerHTML = '';
+    Object.keys(CONSTRUCT_INFO).forEach(key => {
+      const info = CONSTRUCT_INFO[key];
+      const stat = edu.construct_stats && edu.construct_stats[key];
+      if (!stat) return;
+      const mean = stat.mean;
+      const pct = mean != null ? (mean / 5 * 100) : 0;
+      const barClass = mean == null ? '' : (mean >= 4 ? 'high' : (mean < 3 ? 'low' : ''));
+      const div = document.createElement('div');
+      div.className = 'construct-item';
+      div.innerHTML = `
+        <div class="construct-label">${info.label}<small>${info.sub} · n=${stat.n}</small></div>
+        <div class="construct-value">${fmtNum(mean, 2)} <small>/ 5</small></div>
+        <div class="construct-bar"><div class="construct-bar-fill ${barClass}" style="width:${pct}%"></div></div>
+      `;
+      list.appendChild(div);
+    });
+
+    // 문항별 평균 표
+    const tbody = document.getElementById('tbl-items');
+    tbody.innerHTML = '';
+    Object.keys(ITEM_LABEL).forEach(k => {
+      const stat = edu.item_stats && edu.item_stats[k];
+      if (!stat) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${ITEM_LABEL[k]}</td><td class="num">${fmtNum(stat.mean, 2)}</td><td class="num">${fmtNum(stat.sd, 2)}</td><td class="num">${stat.n}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // 모드 도넛
+    renderDonut('chart-mode-primary',  edu.modes && edu.modes.primary,  '주 사용 모드');
+    renderDonut('chart-mode-helpful',  edu.modes && edu.modes.helpful,  '가장 도움된 모드');
+
+    // 사전수준별
+    renderByPrior(edu.by_prior_level || []);
+
+    // 인구통계
+    renderDemoTable('tbl-grade', edu.demographics && edu.demographics.grade, 'grade');
+    renderDemoTable('tbl-gender', edu.demographics && edu.demographics.gender, 'gender');
+    renderDemoTable('tbl-major', edu.demographics && edu.demographics.major, 'major');
+
+    // 자유응답
+    renderFree(edu.free_responses || []);
   }
 
-  function renderActivity(signups, activity) {
-    // 두 시리즈의 날짜를 union
-    const dates = Array.from(new Set([...signups.map(r=>r.d), ...activity.map(r=>r.d)])).sort();
-    const sm = Object.fromEntries(signups.map(r=>[r.d, parseInt(r.n)]));
-    const am = Object.fromEntries(activity.map(r=>[r.d, parseInt(r.sessions)]));
-    const um = Object.fromEntries(activity.map(r=>[r.d, parseInt(r.active_users)]));
-    destroyChart('activity');
-    charts.activity = new Chart(document.getElementById('chart-activity'), {
-      data: { labels: dates,
+  function renderDonut(canvasId, data, title) {
+    destroyChart(canvasId);
+    if (!data || data.length === 0) return;
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    charts[canvasId] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: data.map(d => MODE_LABEL[d.mode] || d.mode),
+        datasets: [{
+          data: data.map(d => d.cnt),
+          backgroundColor: data.map(d => MODE_COLOR[d.mode] || COLORS.plum),
+          borderColor: '#fff', borderWidth: 2
+        }]
+      },
+      options: {
+        ...COMMON_CHART,
+        cutout: '60%',
+        plugins: { legend: { position: 'bottom', labels: { padding: 12, boxWidth: 12 } } }
+      }
+    });
+  }
+
+  function renderByPrior(rows) {
+    destroyChart('chart-by-prior');
+    if (!rows || rows.length === 0) return;
+    const ctx = document.getElementById('chart-by-prior').getContext('2d');
+    charts.by_prior = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => `Level ${r.level}\n(n=${r.n})`),
         datasets: [
-          { type:'bar',  label:'신규 가입',  data: dates.map(d => sm[d] || 0), backgroundColor: 'rgba(170,255,0,0.55)', borderColor: C.L3, borderWidth:1, borderRadius: 0, yAxisID:'y' },
-          { type:'line', label:'활성 사용자', data: dates.map(d => um[d] || 0), borderColor: C.L4, backgroundColor: C.L4, pointBackgroundColor: C.L4, pointRadius: 3, tension: 0.2, yAxisID:'y' },
-          { type:'line', label:'세션 수',    data: dates.map(d => am[d] || 0), borderColor: C.L1, backgroundColor: C.L1, pointBackgroundColor: C.L1, pointRadius: 3, tension: 0.2, yAxisID:'y' }
+          { label: '종합 점수', data: rows.map(r => r.overall), backgroundColor: COLORS.gold, borderRadius: 4 },
+          { label: '학습효과', data: rows.map(r => r.learning), backgroundColor: COLORS.forest, borderRadius: 4 },
+          { label: '정확성',   data: rows.map(r => r.accuracy), backgroundColor: COLORS.slate, borderRadius: 4 },
         ]
       },
-      options: { ...COMMON,
-        scales: { y: { beginAtZero:true, ticks:{ color:C.muted, precision:0 }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color: C.dim } },
-                  x: { ticks:{ color:C.text, font:{size:11} }, grid:{ display:false }, border:{ color: C.dim } } },
-        plugins: { legend: { labels:{ color:C.muted, boxWidth:10, font:{size:11} } },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0 } }
+      options: {
+        ...COMMON_CHART,
+        plugins: { legend: { position: 'top', labels: { padding: 12, boxWidth: 12 } } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, max: 5, grid: { color: COLORS.line } }
+        }
       }
     });
   }
 
-  function renderTurns(h) {
-    const labels = ['1', '2', '3', '4-5', '6-10', '11+'];
-    const data = [h.bin_1, h.bin_2, h.bin_3, h.bin_4_5, h.bin_6_10, h.bin_11p].map(v => parseInt(v||0));
-    destroyChart('turns');
-    charts.turns = new Chart(document.getElementById('chart-turns'), {
-      type:'bar',
-      data:{ labels, datasets:[{ data, backgroundColor: C.L4, borderRadius: 0 }] },
-      options:{ ...COMMON,
-        scales:{ y:{ beginAtZero:true, ticks:{ color:C.muted, precision:0 }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 x:{ ticks:{ color:C.text, font:{size:11} }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ display:false },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0,
-            callbacks:{ label: ctx => ' 세션 수: ' + ctx.parsed.y } } }
-      }
-    });
-  }
-
-  function renderHourly(rows) {
-    const map = {};
-    for (const r of rows) map[parseInt(r.h)] = parseInt(r.n);
-    const labels = Array.from({length:24}, (_,i) => i + '시');
-    const data = Array.from({length:24}, (_,i) => map[i] || 0);
-    destroyChart('hourly');
-    charts.hourly = new Chart(document.getElementById('chart-hourly'), {
-      type:'bar',
-      data:{ labels, datasets:[{ data, backgroundColor: C.L2, borderRadius: 0 }] },
-      options:{ ...COMMON,
-        scales:{ y:{ beginAtZero:true, ticks:{ color:C.muted, precision:0 }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 x:{ ticks:{ color:C.muted, font:{size:9}, maxRotation:0 }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ display:false },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0 } }
-      }
-    });
-  }
-
-  function renderSignupDonut(t) {
-    destroyChart('signup');
-    const labels = ['카카오', '이메일', '익명 세션'];
-    const values = [t.users_kakao||0, t.users_email||0, t.anon_sessions||0];
-    const colors = [C.L5, C.L4, C.muted];
-    charts.signup = new Chart(document.getElementById('chart-signup'), {
-      type:'doughnut',
-      data:{ labels, datasets:[{ data: values, backgroundColor: colors, borderColor: '#0e1014', borderWidth: 2 }] },
-      options:{ ...COMMON,
-        cutout: '60%',
-        plugins:{ legend:{ position:'right', labels:{ color: C.text, boxWidth: 12, font:{size:11} } },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0 } }
-      }
-    });
-  }
-
-  function renderRevisit(rows) {
-    if (!rows.length) return;
-    const labels = rows.map(r => r.vc + '회');
-    const data = rows.map(r => parseInt(r.n));
-    destroyChart('revisit');
-    charts.revisit = new Chart(document.getElementById('chart-revisit'), {
-      type:'bar',
-      data:{ labels, datasets:[{ data, backgroundColor: C.L1, borderRadius:0 }] },
-      options:{ ...COMMON,
-        scales:{ y:{ beginAtZero:true, ticks:{ color:C.muted, precision:0 }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 x:{ ticks:{ color:C.text, font:{size:11} }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ display:false },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0,
-            callbacks:{ label: ctx => ' 사용자 수: ' + ctx.parsed.y } } }
-      }
-    });
-  }
-
-  function renderTopUsers(rows) {
-    const tb = document.querySelector('#tbl-top-users tbody');
-    tb.innerHTML = '';
-    if (!rows.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">// no data</td></tr>'; return; }
-    for (const r of rows) {
-      const tr = document.createElement('tr');
-      const cls = r.login_type === 'kakao' ? 'kakao' : (r.login_type === 'email' ? 'email' : '');
-      const lastLogin = r.last_login ? new Date(r.last_login).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-      tr.innerHTML =
-        '<td>' + r.id + '</td>' +
-        '<td>' + (r.name || '—') + '</td>' +
-        '<td>' + (cls ? '<span class="login-tag '+cls+'">' + r.login_type + '</span>' : (r.login_type || '—')) + '</td>' +
-        '<td class="num">' + (r.msgs || 0) + '</td>' +
-        '<td class="num">' + (r.user_msgs || 0) + '</td>' +
-        '<td class="num">' + (r.sessions || 0) + '</td>' +
-        '<td class="num">' + (r.visit_count || 0) + '</td>' +
-        '<td>' + lastLogin + '</td>';
-      tb.appendChild(tr);
+  function renderDemoTable(id, rows, key) {
+    const tbody = document.querySelector('#' + id + ' tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);">—</td></tr>';
+      return;
     }
-  }
-
-  // ═════════ SURVEY ═════════
-  function renderSurvey(d) {
-    document.getElementById('kpi-total').textContent = d.total;
-    document.getElementById('kpi-valid').textContent = d.valid;
-    const q24 = d.components && d.components.q24_overall_trust ? d.components.q24_overall_trust.yes_pct : null;
-    document.getElementById('kpi-q24').textContent = fmtPct(q24);
-    const tot = d.layers && d.layers.total ? d.layers.total.avg : null;
-    document.getElementById('kpi-total-score').textContent = fmtNum(tot, 2);
-    renderComponents(d.components || {});
-    renderLayers(d.layers || {});
-    renderDaily(d.daily || []);
-    fillTable('tbl-grade',  d.demographics ? d.demographics.grade : null);
-    fillTable('tbl-gender', d.demographics ? d.demographics.gender : null);
-    fillTable('tbl-major',  d.demographics ? d.demographics.major1 : null);
-    fillTable('tbl-mbti',   d.demographics ? d.demographics.mbti : null);
-  }
-
-  function renderComponents(comp) {
-    const order = Object.keys(QLABEL);
-    const labels = order.map(k => QLABEL[k]);
-    const values = order.map(k => comp[k] ? comp[k].yes_pct : null);
-    const colors = order.map(k => LAYER_COLOR[Q_LAYER[k]] || '#888');
-    const ns     = order.map(k => comp[k] ? comp[k].n : 0);
-    destroyChart('components');
-    charts.components = new Chart(document.getElementById('chart-components'), {
-      type:'bar',
-      data:{ labels, datasets:[{ data:values, backgroundColor:colors, borderRadius:0 }] },
-      options:{ ...COMMON, indexAxis:'y',
-        scales:{ x:{ min:0, max:100, ticks:{ color:C.muted, callback:v=>v+'%', font:{size:11} }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 y:{ ticks:{ color:C.text, font:{size:11} }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ display:false },
-          tooltip:{ backgroundColor:'#0a0c12', titleColor:C.L3, bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0, displayColors:false,
-            callbacks:{ title: items => items[0].label,
-              label: ctx => { const v = ctx.parsed.x; return ' yes_rate = ' + (v == null ? 'NA' : (Math.round(v*10)/10) + '%') + '   n=' + ns[ctx.dataIndex]; } } } }
-      }
-    });
-  }
-
-  function renderLayers(L) {
-    const labels = ['L1', 'L2', 'L3', 'L4'];
-    const max = [L.L1?.max, L.L2?.max, L.L3?.max, L.L4?.max];
-    const avg = [L.L1?.avg, L.L2?.avg, L.L3?.avg, L.L4?.avg];
-    const pct = avg.map((a,i) => (a == null || !max[i]) ? null : Math.round(a * 100 / max[i] * 10)/10);
-    destroyChart('layers');
-    charts.layers = new Chart(document.getElementById('chart-layers'), {
-      type:'bar',
-      data:{ labels, datasets:[{ data:pct, backgroundColor:[C.L1, C.L2, C.L3, C.L4], borderRadius:0 }] },
-      options:{ ...COMMON,
-        scales:{ y:{ min:0, max:100, ticks:{ color:C.muted, callback:v=>v+'%', font:{size:11} }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 x:{ ticks:{ color:C.text, font:{size:11, weight:'700'} }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ display:false },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0, displayColors:false,
-            callbacks:{ label: ctx => { const i = ctx.dataIndex; return ' avg = ' + (avg[i] == null ? '—' : avg[i].toFixed(2)) + ' / ' + max[i] + '   (' + (pct[i]==null?'—':pct[i]+'%') + ')'; } } } }
-      }
-    });
-  }
-
-  function renderDaily(daily) {
-    const ctx = document.getElementById('chart-daily');
-    if (!daily.length) { destroyChart('daily'); const c = ctx.getContext('2d'); c.clearRect(0,0,ctx.width,ctx.height); c.fillStyle = C.muted; c.font = '12px JetBrains Mono, monospace'; c.textAlign='center'; c.fillText('// no data', ctx.width/2, ctx.height/2); return; }
-    const labels = daily.map(r => r.d);
-    const ns = daily.map(r => parseInt(r.n));
-    const avgs = daily.map(r => r.avg_total == null ? null : parseFloat(r.avg_total));
-    destroyChart('daily');
-    charts.daily = new Chart(ctx, {
-      data:{ labels,
-        datasets:[
-          { type:'bar',  label:'count', data:ns, backgroundColor:'rgba(0,229,255,0.55)', borderColor:C.L4, borderWidth:1, borderRadius:0, yAxisID:'y' },
-          { type:'line', label:'avg', data:avgs, borderColor:C.L3, backgroundColor:C.L3, yAxisID:'y1', tension:0.2, pointRadius:3, pointBackgroundColor:C.L3 } ] },
-      options:{ ...COMMON,
-        scales:{ y:{ position:'left', beginAtZero:true, ticks:{ color:C.muted, precision:0, font:{size:11} }, grid:{ color:'rgba(255,255,255,0.04)' }, border:{ color:C.dim } },
-                 y1:{ position:'right', beginAtZero:true, max:18, ticks:{ color:C.muted, font:{size:11} }, grid:{ display:false }, border:{ color:C.dim } },
-                 x:{ ticks:{ color:C.text, font:{size:11} }, grid:{ display:false }, border:{ color:C.dim } } },
-        plugins:{ legend:{ labels:{ color:C.muted, boxWidth:10, font:{size:11} } },
-          tooltip:{ backgroundColor:'#0a0c12', bodyColor:C.text, borderColor:C.dim, borderWidth:1, padding:10, cornerRadius:0 } } }
-    });
-  }
-
-  function fillTable(id, rows) {
-    const tb = document.querySelector('#' + id + ' tbody');
-    tb.innerHTML = '';
-    if (!rows || !rows.length) { tb.innerHTML = '<tr><td colspan="3" class="empty">// no data</td></tr>'; return; }
-    for (const r of rows) {
+    rows.forEach(r => {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + (r.k == null ? '—' : r.k) + '</td><td class="num">' + r.n + '</td><td class="num">' + (r.avg_total == null ? '—' : r.avg_total) + '</td>';
-      tb.appendChild(tr);
-    }
+      tr.innerHTML = `<td>${r[key] || r.major || '—'}</td><td class="num">${r.cnt}</td>`;
+      tbody.appendChild(tr);
+    });
   }
 
-  document.getElementById('btn-refresh').addEventListener('click', load);
-  document.getElementById('btn-token').addEventListener('click', () => { sessionStorage.removeItem(TOKEN_KEY); load(); });
+  function renderFree(items) {
+    const list = document.getElementById('free-list');
+    list.innerHTML = '';
+    if (!items || items.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">💬</div>아직 자유응답이 없습니다</div>';
+      return;
+    }
+    items.forEach(it => {
+      const score = it.overall_score != null ? Number(it.overall_score).toFixed(2) : '—';
+      const dt = it.submitted_at ? new Date(it.submitted_at).toLocaleString('ko-KR') : '';
+      if (it.free_helpful) {
+        const div = document.createElement('div');
+        div.className = 'free-item';
+        div.innerHTML = `<div class="free-meta"><span class="label">도움</span>${dt} · 종합 ${score}/5</div>${escapeHtml(it.free_helpful)}`;
+        list.appendChild(div);
+      }
+      if (it.free_improvement) {
+        const div = document.createElement('div');
+        div.className = 'free-item improve';
+        div.innerHTML = `<div class="free-meta"><span class="label">개선</span>${dt} · 종합 ${score}/5</div>${escapeHtml(it.free_improvement)}`;
+        list.appendChild(div);
+      }
+    });
+  }
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // 초기 로딩
   load();
 })();
 </script>
+
 </body>
 </html>
