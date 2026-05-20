@@ -6,7 +6,9 @@ const ALLOWED_ACTIONS = new Set([
   'verify',
   'save_chat',
   'save_survey',
+  'save_survey_v2_edu',
   'survey_summary',
+  'survey_summary_v2_edu',
   'usage_summary'
 ])
 

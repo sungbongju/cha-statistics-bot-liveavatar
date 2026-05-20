@@ -309,7 +309,7 @@
 
   <footer>
     <span class="seg">CLIENT: <b>cha-interview-bot.vercel.app</b></span>
-    <span class="seg">UPSTREAM: <b>aiforalab.com / interview-api</b></span>
+    <span class="seg">UPSTREAM: <b>aiforalab.com / statistics-api</b></span>
     <span class="seg">SCHEMA: <b>users · chat_logs · survey_responses v1</b></span>
   </footer>
 </main>
@@ -317,7 +317,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 (function() {
-  const API = 'https://cha-interview-bot.vercel.app/api/school-api';
+  // 같은 도메인의 school-api 프록시 호출 (Vercel rewrites)
+  const API = '/api/school-api';
   const TOKEN_KEY = 'cha_dashboard_token';
 
   const QLABEL = {
