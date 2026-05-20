@@ -1,8 +1,8 @@
 <?php
 /**
- * cha-interview-bot - 면담봇 API
- * 베이스: finmarket-api/api.php 패턴
- * DB: cha_interview_db
+ * cha-statistics-bot - 경영통계 교육봇 API
+ * 베이스: cha-interview-bot/api.php fork
+ * DB: cha_statistics_db (인터뷰봇과 완전 격리)
  */
 date_default_timezone_set('Asia/Seoul');
 error_reporting(E_ALL);
@@ -10,7 +10,7 @@ ini_set('display_errors', 0);
 
 header('Content-Type: application/json; charset=utf-8');
 $allowed_origins = array(
-    'https://cha-interview-bot.vercel.app',
+    'https://cha-statistics-bot-liveavatar.vercel.app',
     'https://aiforalab.com',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // ─── DB / JWT (환경변수에서 로드 — Apache .htaccess SetEnv) ───
 $db_host    = 'localhost';
-$db_name    = 'cha_interview_db';
+$db_name    = 'cha_statistics_db';
 $db_user    = getenv('CHA_DB_USER')    ?: '';
 $db_pass    = getenv('CHA_DB_PASS')    ?: '';
 $JWT_SECRET = getenv('CHA_JWT_SECRET') ?: '';
@@ -95,6 +95,9 @@ switch ($action) {
         break;
     case 'survey_summary':
         handleSurveySummary($pdo, $input);
+        break;
+    case 'survey_summary_v2_edu':
+        handleSurveySummaryV2Edu($pdo, $input);
         break;
     case 'usage_summary':
         handleUsageSummary($pdo, $input);
@@ -619,6 +622,169 @@ function handleSurveySummary($pdo, $input) {
     } catch (PDOException $e) {
         error_log('[survey_summary] ' . $e->getMessage());
         echo json_encode(array('success' => false, 'error' => 'survey summary failed'));
+    }
+}
+
+// ─── Survey Summary v2_edu (학습자 인식 Likert 5점 집계) ───
+function handleSurveySummaryV2Edu($pdo, $input) {
+    $expected = getenv('CHA_DASHBOARD_TOKEN') ?: '';
+    if (empty($expected)) {
+        echo json_encode(array('success' => false, 'error' => 'dashboard token not configured'));
+        return;
+    }
+    $provided = '';
+    if (isset($_SERVER['HTTP_X_DASHBOARD_TOKEN'])) $provided = $_SERVER['HTTP_X_DASHBOARD_TOKEN'];
+    if (!$provided && isset($input['dashboard_token'])) $provided = $input['dashboard_token'];
+    $eq = false;
+    if (strlen($expected) === strlen($provided)) {
+        $r = 0;
+        for ($i = 0; $i < strlen($expected); $i++) $r |= ord($expected[$i]) ^ ord($provided[$i]);
+        $eq = ($r === 0);
+    }
+    if (!$eq) {
+        echo json_encode(array('success' => false, 'error' => 'invalid dashboard token'));
+        return;
+    }
+
+    $items = array(
+        'q_quiz_link','q_quiz_explain',
+        'q_mode_switch',
+        'q_teacher_presence','q_warm_atmosphere','q_consistent_explain',
+        'q_accuracy','q_limit_admit',
+        'q_flow','q_curiosity',
+        'q_understanding','q_confidence','q_will_reuse',
+        'q_overall'
+    );
+
+    $constructs = array(
+        'A_quiz'        => array('q_quiz_link','q_quiz_explain'),
+        'B_multimodal'  => array('q_mode_switch'),
+        'C_presence'    => array('q_teacher_presence','q_warm_atmosphere','q_consistent_explain'),
+        'D_accuracy'    => array('q_accuracy','q_limit_admit'),
+        'E_flow'        => array('q_flow','q_curiosity'),
+        'F_learning'    => array('q_understanding','q_confidence','q_will_reuse'),
+    );
+
+    try {
+        // 총응답 + 유효(flag_too_fast=0) + 평균 응답시간
+        $totals = $pdo->query("
+            SELECT
+              COUNT(*) AS total,
+              SUM(CASE WHEN flag_too_fast=0 THEN 1 ELSE 0 END) AS valid,
+              AVG(duration_seconds) AS avg_duration_sec
+            FROM survey_responses_v2_edu
+        ")->fetch();
+
+        // 문항별 평균·표준편차·응답수
+        $items_select = array();
+        foreach ($items as $k) {
+            $items_select[] = "AVG($k) AS ${k}__mean";
+            $items_select[] = "STDDEV_POP($k) AS ${k}__sd";
+            $items_select[] = "SUM(CASE WHEN $k IS NOT NULL THEN 1 ELSE 0 END) AS ${k}__n";
+        }
+        $sql = "SELECT " . implode(",\n", $items_select) . "\n FROM survey_responses_v2_edu WHERE flag_too_fast=0";
+        $stats = $pdo->query($sql)->fetch();
+
+        $item_stats = array();
+        foreach ($items as $k) {
+            $item_stats[$k] = array(
+                'mean' => $stats[$k . '__mean'] !== null ? round((float)$stats[$k . '__mean'], 2) : null,
+                'sd'   => $stats[$k . '__sd']   !== null ? round((float)$stats[$k . '__sd'],   2) : null,
+                'n'    => (int)$stats[$k . '__n'],
+            );
+        }
+
+        // 구인별 평균 (서버에 저장된 construct_X 컬럼 사용)
+        $construct_stats = array();
+        foreach ($constructs as $name => $keys) {
+            $col = 'construct_' . strtolower(str_replace('_', '_', $name));
+            // construct_a_quiz, construct_b_multimodal ... 매핑
+            $colMap = array(
+                'A_quiz'       => 'construct_a_quiz',
+                'B_multimodal' => 'construct_b_multimodal',
+                'C_presence'   => 'construct_c_presence',
+                'D_accuracy'   => 'construct_d_accuracy',
+                'E_flow'       => 'construct_e_flow',
+                'F_learning'   => 'construct_f_learning',
+            );
+            $col = $colMap[$name];
+            $row = $pdo->query("SELECT AVG($col) AS m, STDDEV_POP($col) AS s, COUNT($col) AS n FROM survey_responses_v2_edu WHERE flag_too_fast=0")->fetch();
+            $construct_stats[$name] = array(
+                'items' => $keys,
+                'mean'  => $row['m'] !== null ? round((float)$row['m'], 2) : null,
+                'sd'    => $row['s'] !== null ? round((float)$row['s'], 2) : null,
+                'n'     => (int)$row['n'],
+            );
+        }
+
+        // 종합 점수
+        $overall_row = $pdo->query("SELECT AVG(overall_score) AS m, STDDEV_POP(overall_score) AS s FROM survey_responses_v2_edu WHERE flag_too_fast=0")->fetch();
+        $overall_stats = array(
+            'mean' => $overall_row['m'] !== null ? round((float)$overall_row['m'], 2) : null,
+            'sd'   => $overall_row['s'] !== null ? round((float)$overall_row['s'], 2) : null,
+        );
+
+        // 모드 사용 분포
+        $mode_primary = $pdo->query("SELECT mode_primary AS mode, COUNT(*) AS cnt FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND mode_primary IS NOT NULL GROUP BY mode_primary")->fetchAll();
+        $mode_helpful = $pdo->query("SELECT mode_most_helpful AS mode, COUNT(*) AS cnt FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND mode_most_helpful IS NOT NULL GROUP BY mode_most_helpful")->fetchAll();
+        $mode_switched_yes = (int)$pdo->query("SELECT COUNT(*) FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND mode_switched=1")->fetchColumn();
+        $mode_switched_no  = (int)$pdo->query("SELECT COUNT(*) FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND mode_switched=0")->fetchColumn();
+
+        // 사전수준별 평균 (효과 차이 분석용)
+        $by_prior = $pdo->query("
+            SELECT prior_stats_level AS level,
+                   COUNT(*) AS n,
+                   AVG(overall_score) AS overall,
+                   AVG(construct_f_learning) AS learning,
+                   AVG(construct_d_accuracy) AS accuracy
+            FROM survey_responses_v2_edu
+            WHERE flag_too_fast=0 AND prior_stats_level IS NOT NULL
+            GROUP BY prior_stats_level
+            ORDER BY prior_stats_level
+        ")->fetchAll();
+
+        // 자유응답 — 최신 20개 (개인정보 보호 위해 본문만, 익명)
+        $free = $pdo->query("
+            SELECT free_helpful, free_improvement, overall_score, submitted_at
+            FROM survey_responses_v2_edu
+            WHERE flag_too_fast=0 AND (free_helpful IS NOT NULL OR free_improvement IS NOT NULL)
+            ORDER BY submitted_at DESC
+            LIMIT 20
+        ")->fetchAll();
+
+        // 인구통계
+        $by_grade = $pdo->query("SELECT grade, COUNT(*) AS cnt FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND grade IS NOT NULL GROUP BY grade")->fetchAll();
+        $by_gender = $pdo->query("SELECT gender, COUNT(*) AS cnt FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND gender IS NOT NULL GROUP BY gender")->fetchAll();
+        $by_major = $pdo->query("SELECT major1 AS major, COUNT(*) AS cnt FROM survey_responses_v2_edu WHERE flag_too_fast=0 AND major1 IS NOT NULL GROUP BY major1 ORDER BY cnt DESC LIMIT 10")->fetchAll();
+
+        echo json_encode(array(
+            'success'         => true,
+            'as_of'           => date('c'),
+            'totals'          => array(
+                'total' => (int)$totals['total'],
+                'valid' => (int)$totals['valid'],
+                'avg_duration_sec' => $totals['avg_duration_sec'] !== null ? round((float)$totals['avg_duration_sec'], 1) : null,
+            ),
+            'item_stats'      => $item_stats,
+            'construct_stats' => $construct_stats,
+            'overall_stats'   => $overall_stats,
+            'modes'           => array(
+                'primary'  => $mode_primary,
+                'helpful'  => $mode_helpful,
+                'switched_yes' => $mode_switched_yes,
+                'switched_no'  => $mode_switched_no,
+            ),
+            'by_prior_level'  => $by_prior,
+            'demographics'    => array(
+                'grade'  => $by_grade,
+                'gender' => $by_gender,
+                'major'  => $by_major,
+            ),
+            'free_responses'  => $free,
+        ), JSON_UNESCAPED_UNICODE);
+    } catch (PDOException $e) {
+        error_log('[survey_summary_v2_edu] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'survey v2_edu summary failed'));
     }
 }
 
