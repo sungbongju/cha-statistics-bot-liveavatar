@@ -439,6 +439,44 @@
   margin-bottom: 16px;
 }
 
+/* ── 재시험 향상도 배지 (팀원 제안 '향상된 정도') ── */
+.attemptBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--overlay-soft, rgba(184, 138, 94, 0.08));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.improvementBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: linear-gradient(90deg, #5a7d6b, #7ba390);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.improvementBadgeNeutral {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .completeHint {
   font-size: 13px;
   color: var(--muted);

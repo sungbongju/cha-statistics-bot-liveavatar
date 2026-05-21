@@ -6,7 +6,8 @@ import QuizPanel from './components/QuizPanel'
 import AuthModal from './components/AuthModal'
 import SurveyModalV2Edu from './components/SurveyModalV2Edu'
 import styles from './App.module.css'
-import { getUser, clearAuth, verifyToken, newSessionId, saveChat } from './lib/api'
+import { getUser, clearAuth, verifyToken, newSessionId, saveChat,
+         completeQuizChapter, getChapterSummary, getChapterProgress } from './lib/api'
 import { MicRecorder, isMicRecorderSupported } from './lib/stt'
 
 // 퀴즈 데이터 — Vite JSON import (11챕터 75문제)
@@ -889,17 +890,117 @@ export default function App() {
   }, [])
 
   // ─── 퀴즈 핸들러 ───────────────────────────────────
-  const handleQuizComplete = useCallback((chapterId, score, total) => {
+  const handleQuizComplete = useCallback(async (chapterId, score, total, attemptNumber = 1) => {
     const isPassing = (score / total) >= 0.8
+
+    // 1. localStorage 즉시 업데이트 (오프라인 fallback)
     setQuizProgress(prev => {
+      const prevChapter = prev[chapterId] || {}
       const next = {
         ...prev,
-        [chapterId]: { completed: isPassing, score, total }
+        [chapterId]: {
+          completed: isPassing || prevChapter.completed,
+          score,
+          total,
+          first_score: prevChapter.first_score != null ? prevChapter.first_score : score,
+          best_score: Math.max(prevChapter.best_score || 0, score),
+          attempts_total: (prevChapter.attempts_total || 0) + 1,
+        }
       }
       localStorage.setItem('stats-quiz-progress', JSON.stringify(next))
       return next
     })
+
+    // 2. DB에 chapter_progress 업데이트 + 향상도 가져오기 (로그인 시만)
+    let serverProgress = null
+    try {
+      const r = await completeQuizChapter({
+        chapter_id: chapterId,
+        attempt_number: attemptNumber,
+        score, total
+      })
+      if (r?.success) {
+        serverProgress = r.progress
+        // 서버 데이터로 localStorage 동기화
+        setQuizProgress(prev => ({
+          ...prev,
+          [chapterId]: {
+            completed: serverProgress.passed === 1,
+            score: serverProgress.latest_score,
+            total: serverProgress.total_questions,
+            first_score: serverProgress.first_score,
+            best_score: serverProgress.best_score,
+            attempts_total: serverProgress.attempts_total,
+            pass_attempts: serverProgress.pass_attempts,
+            ai_helps_used: serverProgress.ai_helps_used,
+          }
+        }))
+      }
+    } catch (e) {
+      console.warn('[completeQuizChapter] failed:', e)
+    }
+
+    // 3. 효주 제안 챕터 종료 챗봇 피드백 (3턴 이상 안 채워도 봇 활성화)
+    triggerChapterFeedback(chapterId, score, total, attemptNumber, serverProgress)
   }, [])
+
+  // ─── 챕터 종료 챗봇 피드백 (효주 제안) ───────────────────────────────
+  const triggerChapterFeedback = useCallback(async (chapterId, score, total, attemptNumber, serverProgress) => {
+    // 챗봇 열기
+    setMobileChatOpen(true)
+
+    // 세션 없으면 텍스트 모드로 시작
+    if (status === 'idle') {
+      sessionRef.current = null
+      sessionIdRef.current = newSessionId()
+      historyRef.current = []
+      setVideoReady(false)
+      setStatus('connected')
+    }
+
+    try {
+      // 챕터 요약 데이터 가져오기
+      const r = await getChapterSummary({
+        chapter_id: chapterId,
+        attempt_number: attemptNumber
+      })
+      const sum = r?.summary || {}
+      const chapterMeta = (quizData.chapters || []).find(c => c.id === chapterId)
+      const chapterTitle = chapterMeta?.title || `${chapterId}장`
+      const wrongList = sum.wrong_questions || []
+      const aiList = sum.ai_helped_questions || []
+
+      // 틀린·모르겠다 한 문제 텍스트 변환
+      const wrongTextList = wrongList.map(w => {
+        const q = chapterMeta?.questions?.[w.question_index]
+        return q ? `${w.question_index + 1}번 (${q.question.slice(0, 30)}...)` : `${w.question_index + 1}번`
+      }).join(', ')
+      const aiTextList = aiList.map(a => {
+        const q = chapterMeta?.questions?.[a.question_index]
+        return q ? `${a.question_index + 1}번 (${q.question.slice(0, 30)}...)` : `${a.question_index + 1}번`
+      }).join(', ')
+
+      const pct = Math.round((score / total) * 100)
+      const improvement = serverProgress?.improvement
+      const passText = pct >= 80 ? `통과(${pct}%)` : `미통과(${pct}%)`
+
+      // 챗봇에게 분석·피드백 요청 (LLM이 개인화 메시지 생성)
+      const prompt =
+        `(${chapterTitle} 챕터 학습 결과를 정리해서 학생에게 따뜻한 피드백을 해주세요.\n\n` +
+        `시도 횟수: ${attemptNumber}차\n` +
+        `점수: ${score}/${total} (${passText})\n` +
+        (improvement != null && attemptNumber > 1 ? `이전 첫 시도 대비 ${improvement >= 0 ? '+' : ''}${improvement}점 변화\n` : '') +
+        (wrongTextList ? `틀린 문제: ${wrongTextList}\n` : '틀린 문제: 없음 (모두 정답!)\n') +
+        (aiTextList ? `모르겠다고 한 문제: ${aiTextList}\n` : '') +
+        `\n응원·격려 한마디와 함께, 학생이 보완하면 좋을 핵심 개념을 1~2개만 짚어주세요. 너무 길지 않게 4~6문장으로요.)`
+
+      setTimeout(() => {
+        sendMessage(prompt)
+      }, 500)
+    } catch (e) {
+      console.warn('[triggerChapterFeedback] failed:', e)
+    }
+  }, [status, sendMessage])
 
   const handleAskAI = useCallback((question) => {
     // "잘 모르겠어요" → 우측 챗봇에서 AI가 설명

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './QuizPanel.module.css'
+import { saveQuizAttempt } from '../lib/api'
 
 function ProgressBar({ current, total }) {
   const pct = total > 0 ? (current / total) * 100 : 0
@@ -60,7 +61,7 @@ function QuizCard({ question, questionIndex, total, onAnswer, onAskAI }) {
     if (selected === null) return
     setRevealed(true)
     setShowExplanation(true)
-    onAnswer(selected === question.answer)
+    onAnswer(selected === question.answer, selected)
   }
 
   const isCorrect = selected === question.answer
@@ -128,7 +129,7 @@ function QuizCard({ question, questionIndex, total, onAnswer, onAskAI }) {
   )
 }
 
-function ChapterComplete({ chapter, score, total, onRetry, onNext, hasNext }) {
+function ChapterComplete({ chapter, score, total, attemptNumber, improvement, onRetry, onNext, hasNext }) {
   const pct = Math.round((score / total) * 100)
   const isPerfect = score === total
   const isPassing = pct >= 80
@@ -149,6 +150,19 @@ function ChapterComplete({ chapter, score, total, onRetry, onNext, hasNext }) {
         <span className={styles.scoreTotal}>{total}</span>
       </div>
       <div className={styles.scorePct}>{pct}% 정답</div>
+
+      {/* 재시험 향상도 배지 (팀원 제안: '향상된 정도') */}
+      {attemptNumber > 1 && (
+        <div className={styles.attemptBadge}>
+          {attemptNumber}차 시도
+          {improvement !== null && improvement > 0 && (
+            <span className={styles.improvementBadge}>+{improvement}점 향상</span>
+          )}
+          {improvement !== null && improvement === 0 && (
+            <span className={styles.improvementBadgeNeutral}>이전과 동일</span>
+          )}
+        </div>
+      )}
 
       {!isPassing && (
         <p className={styles.completeHint}>
@@ -172,9 +186,9 @@ function ChapterComplete({ chapter, score, total, onRetry, onNext, hasNext }) {
 
 export default function QuizPanel({
   chapter,          // { id, title, description, questions: [] }
-  progress,         // { completed, score, total }
-  onComplete,       // (chapterId, score, total) => void
-  onAskAI,          // (question) => void  — 봇에 설명 요청
+  progress,         // { completed, score, total, first_score, best_score }
+  onComplete,       // (chapterId, score, total, attemptNumber) => void
+  onAskAI,          // (question, opts) => void  — 봇에 설명 요청 (opts: { asked_ai: true })
   onNextChapter,    // () => void
   hasNextChapter,
 }) {
@@ -182,6 +196,12 @@ export default function QuizPanel({
   const [score, setScore] = useState(0)
   const [answered, setAnswered] = useState(0)
   const [finished, setFinished] = useState(false)
+  // 같은 챕터를 N번째 시도하는지 (재시험 추적 — 팀원 제안 '향상된 정도')
+  const [attemptNumber, setAttemptNumber] = useState(1)
+  // 문제별 시작 시각 (duration_ms 측정)
+  const questionStartRef = useRef(Date.now())
+  // 이 문제에서 AI 도움 요청했는지 (체크박스 역할)
+  const askedAiRef = useRef(false)
 
   // 챕터 바뀌면 초기화
   useEffect(() => {
@@ -189,32 +209,66 @@ export default function QuizPanel({
     setScore(0)
     setAnswered(0)
     setFinished(false)
+    setAttemptNumber(1)
+    questionStartRef.current = Date.now()
+    askedAiRef.current = false
   }, [chapter?.id])
+
+  // 다음 문제로 넘어갈 때마다 시간·AI 플래그 리셋
+  useEffect(() => {
+    questionStartRef.current = Date.now()
+    askedAiRef.current = false
+  }, [currentQ])
 
   const questions = chapter?.questions || []
 
-  const handleAnswer = useCallback((isCorrect) => {
+  const handleAnswer = useCallback((isCorrect, selected) => {
     const newScore = score + (isCorrect ? 1 : 0)
     const newAnswered = answered + 1
     setScore(newScore)
     setAnswered(newAnswered)
-  }, [score, answered])
+
+    // ── DB 저장 (fire-and-forget) ──
+    const q = questions[currentQ]
+    if (q) {
+      saveQuizAttempt({
+        chapter_id:      chapter.id,
+        question_id:     q.id,
+        question_index:  currentQ,
+        attempt_number:  attemptNumber,
+        selected_answer: selected,
+        correct_answer:  q.answer,
+        is_correct:      isCorrect ? 1 : 0,
+        asked_ai:        askedAiRef.current ? 1 : 0,
+        duration_ms:     Date.now() - questionStartRef.current
+      })
+    }
+  }, [score, answered, questions, currentQ, chapter?.id, attemptNumber])
+
+  // AskAI wrapper — 클릭 시 askedAiRef 마킹 후 부모 전달
+  const handleAskAI = useCallback((question) => {
+    askedAiRef.current = true
+    onAskAI?.(question, { asked_ai: true })
+  }, [onAskAI])
 
   const handleNext = useCallback(() => {
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1)
     } else {
-      // 챕터 완료
+      // 챕터 완료 — attempt_number도 함께 전달
       setFinished(true)
-      onComplete(chapter.id, score, questions.length)
+      onComplete(chapter.id, score, questions.length, attemptNumber)
     }
-  }, [currentQ, questions.length, chapter?.id, score, onComplete])
+  }, [currentQ, questions.length, chapter?.id, score, attemptNumber, onComplete])
 
   const handleRetry = useCallback(() => {
     setCurrentQ(0)
     setScore(0)
     setAnswered(0)
     setFinished(false)
+    setAttemptNumber(n => n + 1)  // 재시험 = N차 시도
+    questionStartRef.current = Date.now()
+    askedAiRef.current = false
   }, [])
 
   if (!chapter) {
@@ -238,6 +292,12 @@ export default function QuizPanel({
           chapter={chapter}
           score={score}
           total={questions.length}
+          attemptNumber={attemptNumber}
+          improvement={
+            progress?.first_score != null
+              ? score - progress.first_score
+              : null
+          }
           onRetry={handleRetry}
           onNext={onNextChapter}
           hasNext={hasNextChapter}
@@ -276,7 +336,7 @@ export default function QuizPanel({
           questionIndex={currentQ}
           total={questions.length}
           onAnswer={handleAnswer}
-          onAskAI={onAskAI}
+          onAskAI={handleAskAI}
         />
 
         {/* 다음 문제 버튼 (정답 확인 후) */}

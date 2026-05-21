@@ -5,11 +5,16 @@ const ALLOWED_ACTIONS = new Set([
   'kakao_login',
   'verify',
   'save_chat',
+  'list_chats',
   'save_survey',
   'save_survey_v2_edu',
   'survey_summary',
   'survey_summary_v2_edu',
-  'usage_summary'
+  'usage_summary',
+  'save_quiz_attempt',
+  'complete_quiz_chapter',
+  'get_chapter_progress',
+  'get_chapter_summary'
 ])
 
 const FORWARD_HEADERS = ['x-dashboard-token', 'authorization']

@@ -136,3 +136,49 @@ export async function saveSurveyV2Edu(answers) {
   const r = await call('save_survey_v2_edu', body)
   return r
 }
+
+// ─── 퀴즈 점수체계 (quiz_attempts + chapter_progress) ──────────────────────
+// 팀원 제안 매핑: 향상된 정도·재시험 효과·AI 도움 효과·메타인지·24시 접근성
+
+// 매 문제 풀이 시 호출 (fire-and-forget)
+export function saveQuizAttempt(attempt) {
+  // attempt: { chapter_id, question_id, question_index, attempt_number,
+  //           selected_answer, correct_answer, is_correct, asked_ai, duration_ms }
+  const token = getToken()
+  const body = { ...attempt, session_id: getSessionId() }
+  if (token) body.token = token
+  // fire-and-forget — UX 안 막음
+  fetch(`${API_BASE}?action=save_quiz_attempt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    keepalive: true
+  }).catch(() => {})
+}
+
+// 챕터 완료 시 호출 (집계 + chapter_progress 업데이트)
+// 반환: { progress, this_attempt } — UI에 향상도 표시 등에 사용
+export async function completeQuizChapter({ chapter_id, attempt_number, score, total }) {
+  const token = getToken()
+  if (!token) return { success: false, error: 'login required' }
+  const r = await call('complete_quiz_chapter', {
+    token, chapter_id, attempt_number, score, total
+  })
+  return r
+}
+
+// 사용자의 모든 챕터 진행 상태 조회 (로그인 시 localStorage 보강)
+export async function getChapterProgress() {
+  const token = getToken()
+  if (!token) return { success: true, progress: [] }
+  const r = await call('get_chapter_progress', { token })
+  return r
+}
+
+// 챕터 종료 시 챗봇 피드백용 요약 (효주 제안 기능)
+export async function getChapterSummary({ chapter_id, attempt_number }) {
+  const token = getToken()
+  if (!token) return { success: false, error: 'login required' }
+  const r = await call('get_chapter_summary', { token, chapter_id, attempt_number })
+  return r
+}

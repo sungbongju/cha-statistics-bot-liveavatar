@@ -102,6 +102,18 @@ switch ($action) {
     case 'usage_summary':
         handleUsageSummary($pdo, $input);
         break;
+    case 'save_quiz_attempt':
+        handleSaveQuizAttempt($pdo, $input);
+        break;
+    case 'complete_quiz_chapter':
+        handleCompleteQuizChapter($pdo, $input);
+        break;
+    case 'get_chapter_progress':
+        handleGetChapterProgress($pdo, $input);
+        break;
+    case 'get_chapter_summary':
+        handleGetChapterSummary($pdo, $input);
+        break;
     default:
         echo json_encode(array('success' => false, 'error' => 'Unknown action: ' . $action));
 }
@@ -909,5 +921,296 @@ function handleUsageSummary($pdo, $input) {
     } catch (PDOException $e) {
         error_log('[usage_summary] ' . $e->getMessage());
         echo json_encode(array('success' => false, 'error' => 'usage summary failed'));
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ─── QUIZ PROGRESS HANDLERS (점수체계 + 효주 제안 챕터 종료 피드백) ──
+// 팀원 제안 반영:
+//   - 향상된 정도 (first_score → best_score delta)
+//   - 재시험 효과 (attempts_total, pass_attempts)
+//   - AI 도움 효과 (ai_helps_used 추적)
+//   - 24시간 접근성 (attempted_at HOUR 분포)
+//   - 효율성 (duration_ms 누적)
+// ════════════════════════════════════════════════════════════════════
+
+// ── 단일 문제 시도 저장 (매 문제 풀이 시 호출) ──
+function handleSaveQuizAttempt($pdo, $input) {
+    $payload = getUserFromToken($pdo, $input);
+    $user_id = $payload ? $payload['user_id'] : null;
+
+    $session_id    = isset($input['session_id'])    ? trim($input['session_id'])    : null;
+    $chapter_id    = isset($input['chapter_id'])    ? (int)$input['chapter_id']     : null;
+    $question_id   = isset($input['question_id'])   ? trim($input['question_id'])   : null;
+    $question_index= isset($input['question_index'])? (int)$input['question_index'] : null;
+    $attempt_number= isset($input['attempt_number'])? max(1,(int)$input['attempt_number']) : 1;
+    $selected      = isset($input['selected_answer'])? (int)$input['selected_answer'] : null;
+    $correct       = isset($input['correct_answer']) ? (int)$input['correct_answer']  : null;
+    $is_correct    = isset($input['is_correct'])     ? ((int)$input['is_correct'] ? 1 : 0) : null;
+    $asked_ai      = isset($input['asked_ai'])       ? ((int)$input['asked_ai']   ? 1 : 0) : 0;
+    $duration_ms   = isset($input['duration_ms'])    ? (int)$input['duration_ms']    : null;
+
+    if ($chapter_id === null || $question_id === null || $question_index === null) {
+        echo json_encode(array('success' => false, 'error' => 'chapter_id, question_id, question_index required'));
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO quiz_attempts
+              (user_id, session_id, chapter_id, question_id, question_index,
+               attempt_number, selected_answer, correct_answer, is_correct, asked_ai, duration_ms)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+        );
+        $stmt->execute(array(
+            $user_id, $session_id, $chapter_id, $question_id, $question_index,
+            $attempt_number, $selected, $correct, $is_correct, $asked_ai, $duration_ms
+        ));
+        echo json_encode(array('success' => true, 'id' => $pdo->lastInsertId()));
+    } catch (PDOException $e) {
+        error_log('[save_quiz_attempt] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'attempt save failed'));
+    }
+}
+
+// ── 챕터 완료 시 집계 + chapter_progress 업데이트 ──
+function handleCompleteQuizChapter($pdo, $input) {
+    $payload = getUserFromToken($pdo, $input);
+    $user_id = $payload ? $payload['user_id'] : null;
+    if (!$user_id) {
+        echo json_encode(array('success' => false, 'error' => 'login required'));
+        return;
+    }
+
+    $chapter_id     = isset($input['chapter_id'])     ? (int)$input['chapter_id']     : null;
+    $attempt_number = isset($input['attempt_number']) ? max(1,(int)$input['attempt_number']) : 1;
+    $score          = isset($input['score'])          ? (int)$input['score']          : null;
+    $total          = isset($input['total'])          ? (int)$input['total']          : null;
+
+    if ($chapter_id === null || $score === null || $total === null) {
+        echo json_encode(array('success' => false, 'error' => 'chapter_id, score, total required'));
+        return;
+    }
+
+    $pass_threshold = 0.8;
+    $passed = ($total > 0 && ($score / $total) >= $pass_threshold) ? 1 : 0;
+
+    try {
+        $pdo->beginTransaction();
+
+        // 1. 기존 progress 조회
+        $stmt = $pdo->prepare('SELECT * FROM chapter_progress WHERE user_id = ? AND chapter_id = ? FOR UPDATE');
+        $stmt->execute(array($user_id, $chapter_id));
+        $existing = $stmt->fetch();
+
+        // 2. 이번 시도의 AI 도움 횟수·소요시간 집계
+        $stmt = $pdo->prepare('SELECT SUM(asked_ai) AS ai_count, SUM(IFNULL(duration_ms,0)) AS dur_sum
+                                FROM quiz_attempts
+                                WHERE user_id = ? AND chapter_id = ? AND attempt_number = ?');
+        $stmt->execute(array($user_id, $chapter_id, $attempt_number));
+        $row = $stmt->fetch();
+        $ai_this_attempt = (int)$row['ai_count'];
+        $dur_this_attempt = (int)$row['dur_sum'];
+
+        if (!$existing) {
+            // 신규: 첫 시도
+            $stmt = $pdo->prepare(
+                'INSERT INTO chapter_progress
+                  (user_id, chapter_id, first_score, latest_score, best_score, total_questions,
+                   attempts_total, pass_attempts, ai_helps_used, passed, first_passed_at, total_duration_ms)
+                 VALUES (?,?,?,?,?,?,1,?,?,?,?,?)'
+            );
+            $stmt->execute(array(
+                $user_id, $chapter_id,
+                $score, $score, $score, $total,
+                $passed ? 1 : null,
+                $ai_this_attempt,
+                $passed,
+                $passed ? date('Y-m-d H:i:s') : null,
+                $dur_this_attempt
+            ));
+        } else {
+            // 기존: 업데이트
+            $new_best = max((int)$existing['best_score'], $score);
+            $new_attempts = (int)$existing['attempts_total'] + 1;
+            $new_ai = (int)$existing['ai_helps_used'] + $ai_this_attempt;
+            $new_dur = (int)$existing['total_duration_ms'] + $dur_this_attempt;
+            $was_passed = (int)$existing['passed'];
+
+            $new_passed = $was_passed || $passed ? 1 : 0;
+            $new_pass_attempts = $existing['pass_attempts'];
+            $new_first_passed = $existing['first_passed_at'];
+            if (!$was_passed && $passed) {
+                $new_pass_attempts = $new_attempts;
+                $new_first_passed = date('Y-m-d H:i:s');
+            }
+
+            $stmt = $pdo->prepare(
+                'UPDATE chapter_progress SET
+                   latest_score = ?, best_score = ?, total_questions = ?,
+                   attempts_total = ?, pass_attempts = ?, ai_helps_used = ?,
+                   passed = ?, first_passed_at = ?, total_duration_ms = ?
+                 WHERE user_id = ? AND chapter_id = ?'
+            );
+            $stmt->execute(array(
+                $score, $new_best, $total,
+                $new_attempts, $new_pass_attempts, $new_ai,
+                $new_passed, $new_first_passed, $new_dur,
+                $user_id, $chapter_id
+            ));
+        }
+
+        $pdo->commit();
+
+        // 응답: 업데이트된 progress 반환
+        $stmt = $pdo->prepare('SELECT * FROM chapter_progress WHERE user_id = ? AND chapter_id = ?');
+        $stmt->execute(array($user_id, $chapter_id));
+        $progress = $stmt->fetch();
+
+        $improvement = null;
+        if ($progress && $progress['first_score'] !== null) {
+            $improvement = (int)$score - (int)$progress['first_score'];
+        }
+
+        echo json_encode(array(
+            'success' => true,
+            'progress' => array(
+                'first_score'      => (int)$progress['first_score'],
+                'latest_score'     => (int)$progress['latest_score'],
+                'best_score'       => (int)$progress['best_score'],
+                'total_questions'  => (int)$progress['total_questions'],
+                'attempts_total'   => (int)$progress['attempts_total'],
+                'pass_attempts'    => $progress['pass_attempts'] !== null ? (int)$progress['pass_attempts'] : null,
+                'ai_helps_used'    => (int)$progress['ai_helps_used'],
+                'passed'           => (int)$progress['passed'],
+                'first_passed_at'  => $progress['first_passed_at'],
+                'improvement'      => $improvement,
+            ),
+            'this_attempt' => array(
+                'score' => $score,
+                'total' => $total,
+                'attempt_number' => $attempt_number,
+                'passed' => $passed,
+                'ai_helps' => $ai_this_attempt,
+                'duration_ms' => $dur_this_attempt
+            )
+        ));
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log('[complete_quiz_chapter] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'chapter complete failed'));
+    }
+}
+
+// ── 사용자의 모든 챕터 progress 조회 ──
+function handleGetChapterProgress($pdo, $input) {
+    $payload = getUserFromToken($pdo, $input);
+    $user_id = $payload ? $payload['user_id'] : null;
+    if (!$user_id) {
+        // 비로그인은 빈 결과 (localStorage fallback)
+        echo json_encode(array('success' => true, 'progress' => array()));
+        return;
+    }
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT chapter_id, first_score, latest_score, best_score, total_questions,
+                    attempts_total, pass_attempts, ai_helps_used, passed, first_passed_at
+             FROM chapter_progress WHERE user_id = ? ORDER BY chapter_id'
+        );
+        $stmt->execute(array($user_id));
+        echo json_encode(array(
+            'success' => true,
+            'progress' => $stmt->fetchAll()
+        ), JSON_UNESCAPED_UNICODE);
+    } catch (PDOException $e) {
+        error_log('[get_chapter_progress] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'progress fetch failed'));
+    }
+}
+
+// ── 챕터 종료 시 챗봇 피드백용 요약 (효주 제안 기능) ──
+// 마지막 시도의 틀린 문제 + AI 도움 요청한 문제 + 향상도 반환
+function handleGetChapterSummary($pdo, $input) {
+    $payload = getUserFromToken($pdo, $input);
+    $user_id = $payload ? $payload['user_id'] : null;
+    if (!$user_id) {
+        echo json_encode(array('success' => false, 'error' => 'login required'));
+        return;
+    }
+
+    $chapter_id     = isset($input['chapter_id'])     ? (int)$input['chapter_id']     : null;
+    $attempt_number = isset($input['attempt_number']) ? max(1,(int)$input['attempt_number']) : null;
+
+    if ($chapter_id === null || $attempt_number === null) {
+        echo json_encode(array('success' => false, 'error' => 'chapter_id, attempt_number required'));
+        return;
+    }
+
+    try {
+        // 이번 시도의 모든 문제
+        $stmt = $pdo->prepare(
+            'SELECT question_id, question_index, selected_answer, correct_answer,
+                    is_correct, asked_ai
+             FROM quiz_attempts
+             WHERE user_id = ? AND chapter_id = ? AND attempt_number = ?
+             ORDER BY question_index'
+        );
+        $stmt->execute(array($user_id, $chapter_id, $attempt_number));
+        $attempts = $stmt->fetchAll();
+
+        $wrong = array();
+        $asked_ai_list = array();
+        foreach ($attempts as $a) {
+            if (!$a['is_correct']) {
+                $wrong[] = array(
+                    'question_id'     => $a['question_id'],
+                    'question_index'  => (int)$a['question_index'],
+                    'selected_answer' => (int)$a['selected_answer'],
+                    'correct_answer'  => (int)$a['correct_answer']
+                );
+            }
+            if ($a['asked_ai']) {
+                $asked_ai_list[] = array(
+                    'question_id'    => $a['question_id'],
+                    'question_index' => (int)$a['question_index']
+                );
+            }
+        }
+
+        // chapter_progress 가져오기 (향상도용)
+        $stmt = $pdo->prepare('SELECT * FROM chapter_progress WHERE user_id = ? AND chapter_id = ?');
+        $stmt->execute(array($user_id, $chapter_id));
+        $progress = $stmt->fetch();
+
+        $improvement = null;
+        if ($progress) {
+            $first = (int)$progress['first_score'];
+            $latest = (int)$progress['latest_score'];
+            $improvement = $latest - $first;
+        }
+
+        echo json_encode(array(
+            'success' => true,
+            'summary' => array(
+                'chapter_id'     => $chapter_id,
+                'attempt_number' => $attempt_number,
+                'total_questions' => count($attempts),
+                'correct_count'  => count($attempts) - count($wrong),
+                'wrong_questions'   => $wrong,
+                'ai_helped_questions' => $asked_ai_list,
+                'progress' => $progress ? array(
+                    'first_score'      => (int)$progress['first_score'],
+                    'latest_score'     => (int)$progress['latest_score'],
+                    'best_score'       => (int)$progress['best_score'],
+                    'attempts_total'   => (int)$progress['attempts_total'],
+                    'pass_attempts'    => $progress['pass_attempts'] !== null ? (int)$progress['pass_attempts'] : null,
+                    'passed'           => (int)$progress['passed'],
+                    'improvement'      => $improvement,
+                ) : null
+            )
+        ), JSON_UNESCAPED_UNICODE);
+    } catch (PDOException $e) {
+        error_log('[get_chapter_summary] ' . $e->getMessage());
+        echo json_encode(array('success' => false, 'error' => 'summary fetch failed'));
     }
 }
