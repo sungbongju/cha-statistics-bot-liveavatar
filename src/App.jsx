@@ -313,7 +313,7 @@ export default function App() {
   useEffect(() => () => stopUserCamera(), [stopUserCamera])
 
   // ─── 메시지 전송 ───────────────────────────────────
-  const sendMessage = useCallback(async (userText) => {
+  const sendMessage = useCallback(async (userText, options = {}) => {
     const text = userText.trim()
     if (!text || isProcessingRef.current) return
     // 봇 발화 중에 STT echo가 새 질문으로 들어오면 여기서 방어 (무한루프 차단 마지막 보루)
@@ -324,12 +324,18 @@ export default function App() {
     isProcessingRef.current = true
     setIsProcessing(true)
 
-    setMessages(prev => [...prev, { role: 'user', text }])
-    historyRef.current = [...historyRef.current, { role: 'user', content: text }]
-    userTurnCountRef.current += 1
+    // hidden 모드: 사용자 메시지를 UI에 안 보이고 DB에도 안 저장 (시스템 컨텍스트용)
+    // 효주 제안 챕터 종료 피드백 같이 — 봇에게 분석 요청만 보내고 답변만 표시
+    const hidden = options.hidden === true
 
-    // DB 저장 (사용자 메시지)
-    if (sessionIdRef.current) saveChat(sessionIdRef.current, 'user', text)
+    if (!hidden) {
+      setMessages(prev => [...prev, { role: 'user', text }])
+    }
+    historyRef.current = [...historyRef.current, { role: 'user', content: text }]
+    if (!hidden) {
+      userTurnCountRef.current += 1
+      if (sessionIdRef.current) saveChat(sessionIdRef.current, 'user', text)
+    }
 
     setMessages(prev => [...prev, { role: 'assistant', text: null }]) // typing
 
@@ -995,7 +1001,7 @@ export default function App() {
         `\n응원·격려 한마디와 함께, 학생이 보완하면 좋을 핵심 개념을 1~2개만 짚어주세요. 너무 길지 않게 4~6문장으로요.)`
 
       setTimeout(() => {
-        sendMessage(prompt)
+        sendMessage(prompt, { hidden: true })  // 시스템 컨텍스트로 전송 (UI에 안 보임)
       }, 500)
     } catch (e) {
       console.warn('[triggerChapterFeedback] failed:', e)
