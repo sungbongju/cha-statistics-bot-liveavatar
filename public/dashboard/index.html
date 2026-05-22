@@ -492,22 +492,22 @@
     document.getElementById('kpi-sessions').textContent = fmtInt(t.sessions_total);
     document.getElementById('kpi-users').textContent = fmtInt(t.users_total);
 
-    // 일자별 차트
-    if (usage.chats_daily) {
+    // 일자별 차트 (activity: {d, sessions, active_users})
+    if (usage.activity && usage.activity.length > 0) {
       destroyChart('chats_daily');
       const ctx = document.getElementById('chart-chats-daily').getContext('2d');
       charts.chats_daily = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: usage.chats_daily.map(d => d.day),
-          datasets: [{
-            label: '채팅 수', data: usage.chats_daily.map(d => d.cnt),
-            backgroundColor: COLORS.gold, borderRadius: 4
-          }]
+          labels: usage.activity.map(d => d.d),
+          datasets: [
+            { label: '세션',     data: usage.activity.map(d => Number(d.sessions)),     backgroundColor: COLORS.gold,  borderRadius: 4 },
+            { label: '활성 사용자', data: usage.activity.map(d => Number(d.active_users)), backgroundColor: COLORS.forest, borderRadius: 4 },
+          ]
         },
         options: {
           ...COMMON_CHART,
-          plugins: { legend: { display: false } },
+          plugins: { legend: { position: 'top', labels: { padding: 10, boxWidth: 10 } } },
           scales: {
             x: { grid: { display: false } },
             y: { beginAtZero: true, grid: { color: COLORS.line } }
@@ -516,16 +516,16 @@
       });
     }
 
-    // 시간대별
-    if (usage.chats_hourly) {
+    // 시간대별 (hourly: {h, n})
+    if (usage.hourly && usage.hourly.length > 0) {
       destroyChart('chats_hourly');
       const ctx = document.getElementById('chart-chats-hourly').getContext('2d');
       charts.chats_hourly = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: usage.chats_hourly.map(d => d.hour + '시'),
+          labels: usage.hourly.map(d => d.h + '시'),
           datasets: [{
-            label: '채팅 수', data: usage.chats_hourly.map(d => d.cnt),
+            label: '메시지 수', data: usage.hourly.map(d => Number(d.n)),
             backgroundColor: COLORS.slate, borderRadius: 4
           }]
         },
