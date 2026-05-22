@@ -1,3 +1,8 @@
+// ⚠️ TEMPORARY: aiforalab.com SSL cert expired 2026-05-22 09:38 KST
+// 학교 IT 재발급 전까지 SSL 검증 우회. 학내 통신이라 위험도 낮음.
+// 갱신 후 이 줄 삭제 권장.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 const SCHOOL_API_BASE = 'https://aiforalab.com/statistics-api/api.php'
 const ALLOWED_ACTIONS = new Set([
   'email_signup',
