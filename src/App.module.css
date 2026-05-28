@@ -29,8 +29,12 @@
   }
 
   /* 모바일: 퀴즈만 보이고, 챗은 슬라이드 오버레이 */
+  /* quizSide 안에 ChapterNav(목록) + QuizPanel(문제)이 가로로 배치돼 있어
+     모바일에선 ChapterNav가 width:100%를 먹어 QuizPanel을 화면 밖으로 밀어내는 버그.
+     세로 스택으로 바꿔서 목록 위 / 문제 아래로 자연 스크롤 되게 함. */
   .quizSide {
     flex: 1;
+    flex-direction: column;
     min-height: 0;
   }
 
